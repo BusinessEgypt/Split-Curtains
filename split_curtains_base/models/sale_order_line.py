@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from odoo import models, fields, api
 
 class SaleOrderLine(models.Model):
@@ -14,7 +15,11 @@ class SaleOrderLine(models.Model):
     @api.depends('x_width_m', 'x_height_m')
     def _compute_unit_area(self):
         for line in self:
-            width = line.x_width_m or 0
-            height = line.x_height_m or 0
-            area = width * height
-            line.x_unit_area_m2 = max(area, 2)
+            if line.x_width_m and line.x_height_m:
+                area = line.x_width_m * line.x_height_m
+                if area < 2:
+                    line.x_unit_area_m2 = 2
+                else:
+                    line.x_unit_area_m2 = area
+            else:
+                line.x_unit_area_m2 = 2
