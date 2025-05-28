@@ -36,7 +36,7 @@ class SaleOrderLine(models.Model):
     @api.depends('x_unit_area_m2', 'x_quantity_units')
     def _compute_total_area(self):
         for line in self:
-            line.x_total_area_m2 = line.x_unit_area_m2 * line.x_quantity_units
+            line.x_total_area_m2 = line.x_unit_area_m2 * (line.x_quantity_units or 0)
 
     @api.depends('x_code')
     def _compute_price_per_m2(self):
@@ -54,9 +54,11 @@ class SaleOrderLine(models.Model):
             area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
             total_area = area * (line.x_quantity_units or 0)
             price_per_m2 = line.x_code.list_price or 0
+
+            # نحفّز Odoo بتغيير فعلي داخل الحقول الرسمية
+            line.price_unit = price_per_m2 + 0.000001
+            line.product_uom_qty = total_area + 0.000001
+
+            # ثم نرجّعهم للحقيقة (علشان ما يبقوش غلط)
             line.price_unit = price_per_m2
             line.product_uom_qty = total_area
-
-        # ✅ استدعاء الحساب الأصلي من order علشان يظهر التوتال تحت
-        orders = self.mapped('order_id')
-        orders._compute_amount_all()
