@@ -55,7 +55,7 @@ class SaleOrderLine(models.Model):
             total_area = area * (line.x_quantity_units or 0)
             price_per_m2 = line.x_code.list_price or 0
 
-            # ✅ ربط المنتج الرسمي بكود الستارة علشان Odoo يبدأ يحسب التوتال فعليًا
+            # الربط الصحيح للحسابات الرسمية بتاعت Odoo
             line.product_id = line.x_code.id
             line.price_unit = price_per_m2
             line.product_uom_qty = total_area
