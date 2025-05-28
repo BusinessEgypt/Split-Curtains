@@ -44,3 +44,7 @@ class SaleOrderLine(models.Model):
             price_per_m2 = line.x_code.list_price or 0
             line.price_unit = price_per_m2
             line.product_uom_qty = total_area
+
+            # ✅ Force order total to recalculate
+            if line.order_id:
+                line.order_id.amount_untaxed += 0  # trigger recompute
