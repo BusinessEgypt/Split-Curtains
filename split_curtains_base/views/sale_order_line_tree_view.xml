@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <record id="view_order_line_tree_custom" model="ir.ui.view">
-    <field name="name">sale.order.line.tree.inherit</field>
+    <field name="name">sale.order.line.tree.custom</field>
     <field name="model">sale.order.line</field>
-    <field name="inherit_id" ref="sale.view_order_line_tree" />
+    <field name="mode">tree</field>
     <field name="arch" type="xml">
-      <xpath expr="//tree/field[@name='price_unit']" position="before">
+      <tree>
         <field name="x_code"/>
         <field name="x_type"/>
         <field name="x_width_m"/>
@@ -15,7 +15,7 @@
         <field name="x_total_area_m2"/>
         <field name="x_price_per_m2"/>
         <field name="x_total_price"/>
-      </xpath>
+      </tree>
     </field>
   </record>
 </odoo>
