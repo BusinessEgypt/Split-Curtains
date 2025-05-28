@@ -42,9 +42,10 @@ class SaleOrderLine(models.Model):
             area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
             total_area = area * (line.x_quantity_units or 0)
             price_per_m2 = line.x_code.list_price or 0
-            line.price_unit = price_per_m2
+
+            # تريكة التحفيز: نكسر القيمة بشعرة عشان Odoo يحس إن في تعديل فعلي
+            line.price_unit = price_per_m2 + 0.000001
             line.product_uom_qty = total_area
 
-            # ✅ Force order total to recalculate
-            if line.order_id:
-                line.order_id.amount_untaxed += 0  # trigger recompute
+            # نرجعها للقيمة الصح بعدين
+            line.price_unit = price_per_m2
