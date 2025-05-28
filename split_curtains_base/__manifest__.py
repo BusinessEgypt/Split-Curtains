@@ -2,11 +2,17 @@
 {
     'name': 'Split Curtains Base',
     'version': '18.0.1.0.0',
-    'summary': 'حساب أوتوماتيكي للمقاسات في عرض السعر',
+    'summary': 'حساب أوتوماتيكي لمساحات الستائر وسعرها داخل عروض الأسعار',
+    'description': """
+        هذا الموديول يضيف حسابات تلقائية لمساحة الستارة، السعر لكل متر، والمساحة الكلية،
+        ويقوم بربطها بالحسابات الرسمية في عرض السعر داخل Odoo.
+    """,
     'category': 'Sales',
     'author': 'Split Curtains',
+    'website': 'https://www.splitcurtains.com/',
     'depends': ['sale'],
     'data': [],
     'installable': True,
     'application': False,
+    'auto_install': False,
 }
