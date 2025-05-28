@@ -1,9 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <record id="view_order_line_tree_custom" model="ir.ui.view">
     <field name="name">sale.order.line.tree.custom</field>
     <field name="model">sale.order.line</field>
-    <field name="mode">tree</field>
     <field name="arch" type="xml">
       <tree>
         <field name="x_code"/>
