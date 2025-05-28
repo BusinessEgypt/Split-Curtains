@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from odoo import models, fields, api
 
 class SaleOrderLine(models.Model):
@@ -31,15 +30,13 @@ class SaleOrderLine(models.Model):
     @api.depends('x_width_m', 'x_height_m')
     def _compute_unit_area(self):
         for line in self:
-            width = line.x_width_m or 0
-            height = line.x_height_m or 0
-            area = width * height
-            line.x_unit_area_m2 = area if area >= 2 else 2
+            area = (line.x_width_m or 0) * (line.x_height_m or 0)
+            line.x_unit_area_m2 = max(area, 2)
 
     @api.depends('x_unit_area_m2', 'x_quantity_units')
     def _compute_total_area(self):
         for line in self:
-            line.x_total_area_m2 = line.x_unit_area_m2 * (line.x_quantity_units or 0)
+            line.x_total_area_m2 = line.x_unit_area_m2 * line.x_quantity_units
 
     @api.depends('x_code')
     def _compute_price_per_m2(self):
@@ -54,10 +51,13 @@ class SaleOrderLine(models.Model):
     @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code')
     def _onchange_manual_fields(self):
         for line in self:
+            # حساب المساحة والسعر
             area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
             total_area = area * (line.x_quantity_units or 0)
             price_per_m2 = line.x_code.list_price or 0
+            # مزامنة الحقول الرسمية ليحسبها core
             line.price_unit = price_per_m2
             line.product_uom_qty = total_area
+        # إعادة حساب Totals باستخدام Compute الأصلي
         orders = self.mapped('order_id')
         orders._compute_amount_all()
