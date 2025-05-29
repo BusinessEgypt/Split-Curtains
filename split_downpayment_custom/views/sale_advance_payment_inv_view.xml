@@ -3,11 +3,12 @@
   <record id="view_sale_advance_payment_inv_inherit_custom" model="ir.ui.view">
     <field name="name">sale.advance.payment.inv.form.inherit.custom</field>
     <field name="model">sale.advance.payment.inv</field>
-    <field name="inherit_id" ref="sale.view_sale_advance_payment_inv" />
+    <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='amount']" position="before">
         <field name="downpayment_mode"/>
-        <field name="fixed_amount" attrs="{'invisible': [('downpayment_mode', '=', 'percentage')]}"/>
+        <field name="fixed_amount" options="{'no_create': True}" modifiers='{"invisible": [["downpayment_mode", "=", "percentage"]]}'
+        />
       </xpath>
     </field>
   </record>
