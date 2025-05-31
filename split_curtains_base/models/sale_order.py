@@ -30,3 +30,8 @@ class SaleOrder(models.Model):
                         if line.product_id and 'down' in (line.product_id.name or '').lower():
                             downpayment_total += line.price_total
             order.x_downpayment = downpayment_total
+
+@api.onchange('invoice_ids')
+def _onchange_invoice_ids(self):
+    self.update_downpayment_from_invoice()
+
