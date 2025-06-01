@@ -22,18 +22,16 @@ class SaleOrder(models.Model):
         for order in self:
             order.x_remaining = order.amount_total - (order.x_downpayment or 0.0)
 
-    @api.depends('invoice_ids.invoice_line_ids', 'invoice_ids.state', 'invoice_ids.payment_state')
+    @api.depends('invoice_ids', 'invoice_ids.state', 'invoice_ids.payment_state')
     def _compute_downpayment(self):
         for order in self:
-            downpayment_total = 0.0
-            # المنتج الرسمي للدفعة المقدمة
-            advance_product = self.env.ref("sale.advance_payment_product", raise_if_not_found=False)
-            if not advance_product:
-                order.x_downpayment = 0.0
-                continue
+            total = 0.0
             for invoice in order.invoice_ids:
-                if invoice.state != 'cancel' and invoice.payment_state != 'not_paid':
+                if invoice.state != 'cancel' and invoice.payment_state not in ['not_paid']:
                     for line in invoice.invoice_line_ids:
-                        if line.product_id == advance_product:
-                            downpayment_total += line.price_total
-            order.x_downpayment = downpayment_total
+                        if line.display_type or not line.product_id:
+                            continue
+                        # الشرط الأساسي: لازم السطر ده يخص Down Payment
+                        if invoice.invoice_origin == order.name and line.price_subtotal < order.amount_total:
+                            total += line.price_subtotal
+            order.x_downpayment = total
