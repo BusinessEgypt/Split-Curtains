@@ -25,45 +25,10 @@ class SaleOrder(models.Model):
     def _compute_downpayment(self):
         for order in self:
             total = 0.0
-            products = self.env['product.product'].search([
-                ('name', 'ilike', 'down payment')
-            ])
-            if products:
-                lines = self.env['account.move.line'].search([
-                    ('move_id.move_type', '=', 'out_invoice'),
-                    ('move_id.state', '!=', 'cancel'),
-                    ('product_id', 'in', products.ids),
-                ])
-                for line in lines:
-                    linked_orders = line.sale_line_ids.mapped('order_id').ids
-                    if order.id in linked_orders:
-                        total += line.price_total
+            for invoice in order.invoice_ids:
+                if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
+                    for line in invoice.invoice_line_ids:
+                        label = (line.name or "").lower()
+                        if 'down payment' in label:
+                            total += line.price_total
             order.x_downpayment = total
-
-    def _create_invoices(self, final=False, grouped=False):
-        invoices = super()._create_invoices(final=final, grouped=grouped)
-
-        for order in self:
-            if order.x_downpayment:
-                for invoice in order.invoice_ids:
-                    if invoice.state != 'cancel' and invoice.move_type == 'out_invoice':
-                        already_exists = invoice.invoice_line_ids.filtered(
-                            lambda l: 'down payment total' in (l.name or '').lower()
-                        )
-                        if not already_exists:
-                            product = self.env['product.product'].search(
-                                [('name', 'ilike', 'down payment')], limit=1
-                            )
-                            if product:
-                                invoice.write({
-                                    'invoice_line_ids': [(0, 0, {
-                                        'name': 'Down Payment Total',
-                                        'quantity': 1,
-                                        'price_unit': -order.x_downpayment,
-                                        'tax_ids': [],
-                                        'product_id': product.id,
-                                        'account_id': product.property_account_income_id.id or product.categ_id.property_account_income_categ_id.id,
-                                    })]
-                                })
-
-        return invoices
