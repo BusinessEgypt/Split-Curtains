@@ -10,6 +10,7 @@ class SaleOrder(models.Model):
         store=True,
         currency_field='currency_id',
     )
+
     x_remaining = fields.Monetary(
         string='Remaining',
         compute='_compute_remaining',
@@ -27,5 +28,6 @@ class SaleOrder(models.Model):
             total = 0.0
             for invoice in order.invoice_ids:
                 if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
+                    # هنا بنضيف المبلغ بغض النظر عن نوع المنتج
                     total += invoice.amount_total
             order.x_downpayment = total
