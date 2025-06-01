@@ -13,7 +13,7 @@ class SaleOrder(models.Model):
     x_remaining = fields.Monetary(
         string='Remaining',
         compute='_compute_remaining',
-        store=True=True,
+        store=True,
     )
 
     @api.depends('amount_total', 'x_downpayment')
@@ -23,7 +23,6 @@ class SaleOrder(models.Model):
 
     @api.depends('invoice_ids.invoice_line_ids', 'invoice_ids.state', 'invoice_ids.payment_state')
     def _compute_downpayment(self):
-        # نحاول نجيب منتج الداون بايمنت باستخدام الاسم فقط
         product_template = self.env['product.template'].search([('name', '=', 'Down Payment')], limit=1)
         if not product_template:
             for order in self:
@@ -36,8 +35,8 @@ class SaleOrder(models.Model):
 
         for order in self:
             total = 0.0
-            for invoice in order.invoice_ids.filtered(lambda i: i.state != 'cancel'):
+            for invoice in order.invoice_ids.filtered(lambda inv: inv.state != 'cancel'):
                 for line in invoice.invoice_line_ids:
-                    if line.product_id.id == product.id:
+                    if line.product_id and line.product_id.id == product.id:
                         total += line.price_total
             order.x_downpayment = total
