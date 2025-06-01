@@ -21,11 +21,12 @@ class SaleOrder(models.Model):
         for order in self:
             order.x_remaining = order.amount_total - (order.x_downpayment or 0.0)
 
-    @api.depends('invoice_ids')
+    @api.depends('invoice_ids.invoice_line_ids', 'invoice_ids.state', 'invoice_ids.payment_state')
     def _compute_downpayment(self):
         for order in self:
-            total = 0.0
-            for invoice in order.invoice_ids:
-                if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
-                    total += invoice.amount_total
-            order.x_downpayment = total
+            downpayment_total = 0.0
+            for invoice in order.invoice_ids.filtered(lambda inv: inv.state != 'cancel'):
+                for line in invoice.invoice_line_ids:
+                    if line.product_id and line.product_id.name == 'Down Payment':
+                        downpayment_total += line.price_total
+            order.x_downpayment = downpayment_total
