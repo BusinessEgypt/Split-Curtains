@@ -29,12 +29,17 @@ class SaleOrder(models.Model):
                 ('move_type', '=', 'out_invoice'),
                 ('state', '!=', 'cancel'),
                 ('partner_id', '=', order.partner_id.id),
-                ('invoice_origin', '=', order.name)
             ])
             for invoice in invoices:
                 for line in invoice.invoice_line_ids:
                     label = (line.name or "").lower()
-                    if 'down payment' in label:
+                    linked_order_ids = line.sale_line_ids.mapped('order_id').ids
+                    if (
+                        'down payment' in label and (
+                            order.name in (invoice.invoice_origin or '') or
+                            order.id in linked_order_ids
+                        )
+                    ):
                         total += line.price_total
             order.x_downpayment = total
 
