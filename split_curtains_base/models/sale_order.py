@@ -10,7 +10,6 @@ class SaleOrder(models.Model):
         store=True,
         currency_field='currency_id',
     )
-
     x_remaining = fields.Monetary(
         string='Remaining',
         compute='_compute_remaining',
@@ -22,16 +21,11 @@ class SaleOrder(models.Model):
         for order in self:
             order.x_remaining = order.amount_total - (order.x_downpayment or 0.0)
 
-    @api.depends('invoice_ids', 'invoice_ids.state', 'invoice_ids.payment_state')
+    @api.depends('invoice_ids')
     def _compute_downpayment(self):
         for order in self:
             total = 0.0
             for invoice in order.invoice_ids:
-                if invoice.state != 'cancel' and invoice.payment_state not in ['not_paid']:
-                    for line in invoice.invoice_line_ids:
-                        if line.display_type or not line.product_id:
-                            continue
-                        # الشرط الأساسي: لازم السطر ده يخص Down Payment
-                        if invoice.invoice_origin == order.name and line.price_subtotal < order.amount_total:
-                            total += line.price_subtotal
+                if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
+                    total += invoice.amount_total
             order.x_downpayment = total
