@@ -25,15 +25,9 @@ class SaleOrder(models.Model):
     def _compute_downpayment(self):
         for order in self:
             downpayment_total = 0.0
-            invoices = self.env['account.move'].search([
-                ('move_type', '=', 'out_invoice'),
-                ('state', '!=', 'cancel'),
-                ('invoice_origin', '=', order.name)
-            ])
-            for invoice in invoices:
-                # نجمع كل سطور الفاتورة اللي اسمها فيه كلمة down OR كل سطر مرتبط بخدمة الدفعة المقدمة (حسب الكود الافتراضي للمنتج)
+            for invoice in order.invoice_ids.filtered(lambda inv: inv.move_type == 'out_invoice' and inv.state != 'cancel'):
                 for line in invoice.invoice_line_ids:
-                    # لو عايز بالمنتج Down Payment Product فقط (ده الأكثر أماناً واحترافية في Odoo):
-                    if line.product_id and line.product_id.invoice_policy == 'order' and line.price_total > 0:
+                    # بنعتمد هنا على Product Type الافتراضي اللي Odoo بيعمله في Settings للدفعة المقدمة
+                    if line.product_id and (line.product_id.default_code == 'DOWN' or 'down' in (line.product_id.name or '').lower()):
                         downpayment_total += line.price_total
             order.x_downpayment = downpayment_total
