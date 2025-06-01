@@ -29,7 +29,7 @@ class SaleOrder(models.Model):
                 ('move_type', '=', 'out_invoice'),
                 ('state', '!=', 'cancel'),
                 ('partner_id', '=', order.partner_id.id),
-                ('origin', '=', order.name)
+                ('invoice_origin', '=', order.name)
             ])
             for invoice in invoices:
                 for line in invoice.invoice_line_ids:
