@@ -33,8 +33,8 @@ class SaleOrder(models.Model):
                             total += line.price_total
             order.x_downpayment = total
 
-    def _create_invoices(self):
-        invoices = super()._create_invoices()
+    def _create_invoices(self, final=False, grouped=False):
+        invoices = super()._create_invoices(final=final, grouped=grouped)
 
         for order in self:
             if order.x_downpayment:
@@ -44,7 +44,6 @@ class SaleOrder(models.Model):
                             lambda l: 'down payment total' in (l.name or '').lower()
                         )
                         if not already_exists:
-                            # ابحث عن المنتج اللي اسمه "Down Payment" من قاعدة البيانات
                             product = self.env['product.product'].search(
                                 [('name', '=', 'Down Payment')], limit=1
                             )
