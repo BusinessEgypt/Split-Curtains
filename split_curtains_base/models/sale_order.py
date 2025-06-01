@@ -21,11 +21,10 @@ class SaleOrder(models.Model):
         for order in self:
             order.x_remaining = order.amount_total - (order.x_downpayment or 0.0)
 
-    @api.depends('invoice_ids.invoice_line_ids', 'invoice_ids.origin')
+    @api.depends('invoice_ids.invoice_line_ids')
     def _compute_downpayment(self):
         for order in self:
             total = 0.0
-            # نبحث عن كل الفواتير اللي مرتبطة بـ order هذا
             invoices = self.env['account.move'].search([
                 ('move_type', '=', 'out_invoice'),
                 ('state', '!=', 'cancel'),
