@@ -21,16 +21,22 @@ class SaleOrder(models.Model):
         for order in self:
             order.x_remaining = order.amount_total - (order.x_downpayment or 0.0)
 
-    @api.depends('invoice_ids.invoice_line_ids')
+    @api.depends('invoice_ids.invoice_line_ids', 'invoice_ids.origin')
     def _compute_downpayment(self):
         for order in self:
             total = 0.0
-            for invoice in order.invoice_ids:
-                if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
-                    for line in invoice.invoice_line_ids:
-                        label = (line.name or "").lower()
-                        if 'down payment' in label:
-                            total += line.price_total
+            # نبحث عن كل الفواتير اللي مرتبطة بـ order هذا
+            invoices = self.env['account.move'].search([
+                ('move_type', '=', 'out_invoice'),
+                ('state', '!=', 'cancel'),
+                ('partner_id', '=', order.partner_id.id),
+                ('origin', '=', order.name)
+            ])
+            for invoice in invoices:
+                for line in invoice.invoice_line_ids:
+                    label = (line.name or "").lower()
+                    if 'down payment' in label:
+                        total += line.price_total
             order.x_downpayment = total
 
     def _create_invoices(self, final=False, grouped=False):
