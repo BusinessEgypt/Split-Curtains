@@ -25,19 +25,19 @@ class SaleOrder(models.Model):
     def _compute_downpayment(self):
         for order in self:
             total = 0.0
-            # نبحث عن كل المنتجات اللي اسمها فيه Down Payment بأي شكل
             products = self.env['product.product'].search([
                 ('name', 'ilike', 'down payment')
             ])
             if products:
-                # نجيب كل سطور الفواتير اللي فيها المنتج ده والعميل ده
                 lines = self.env['account.move.line'].search([
                     ('move_id.move_type', '=', 'out_invoice'),
                     ('move_id.state', '!=', 'cancel'),
-                    ('move_id.partner_id', '=', order.partner_id.id),
                     ('product_id', 'in', products.ids),
                 ])
-                total = sum(lines.mapped('price_total'))
+                for line in lines:
+                    linked_orders = line.sale_line_ids.mapped('order_id').ids
+                    if order.id in linked_orders:
+                        total += line.price_total
             order.x_downpayment = total
 
     def _create_invoices(self, final=False, grouped=False):
