@@ -31,8 +31,9 @@ class SaleOrder(models.Model):
                 ('invoice_origin', '=', order.name)
             ])
             for invoice in invoices:
-                if invoice.payment_state != 'not_paid':
-                    for line in invoice.invoice_line_ids:
-                        if line.product_id and 'down' in (line.product_id.name or '').lower():
-                            downpayment_total += line.price_total
+                # نجمع كل سطور الفاتورة اللي اسمها فيه كلمة down OR كل سطر مرتبط بخدمة الدفعة المقدمة (حسب الكود الافتراضي للمنتج)
+                for line in invoice.invoice_line_ids:
+                    # لو عايز بالمنتج Down Payment Product فقط (ده الأكثر أماناً واحترافية في Odoo):
+                    if line.product_id and line.product_id.invoice_policy == 'order' and line.price_total > 0:
+                        downpayment_total += line.price_total
             order.x_downpayment = downpayment_total
