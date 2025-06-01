@@ -10,7 +10,6 @@ class SaleOrder(models.Model):
         store=True,
         currency_field='currency_id',
     )
-
     x_remaining = fields.Monetary(
         string='Remaining',
         compute='_compute_remaining',
@@ -24,10 +23,14 @@ class SaleOrder(models.Model):
 
     @api.depends('invoice_ids')
     def _compute_downpayment(self):
+        # ❗️ده ID المنتج الخاص بالدفعة المقدمة داخل النظام
+        downpayment_product_id = 2  # عدّله لو اتغير في البيئة عندك
+
         for order in self:
             total = 0.0
             for invoice in order.invoice_ids:
                 if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
-                    # هنا بنضيف المبلغ بغض النظر عن نوع المنتج
-                    total += invoice.amount_total
+                    for line in invoice.invoice_line_ids:
+                        if line.product_id.id == downpayment_product_id:
+                            total += line.price_total
             order.x_downpayment = total
