@@ -23,10 +23,13 @@ class SaleOrder(models.Model):
 
     @api.depends('invoice_ids.invoice_line_ids', 'invoice_ids.state', 'invoice_ids.payment_state')
     def _compute_downpayment(self):
+        # نجيب المنتج الرسمي للـ Down Payment
+        product = self.env['product.product'].search([('name', '=', 'Down Payment')], limit=1)
         for order in self:
             downpayment_total = 0.0
-            for invoice in order.invoice_ids.filtered(lambda inv: inv.state != 'cancel'):
-                for line in invoice.invoice_line_ids:
-                    if line.product_id and line.product_id.name == 'Down Payment':
-                        downpayment_total += line.price_total
+            for invoice in order.invoice_ids:
+                if invoice.state != 'cancel' and invoice.payment_state != 'not_paid':
+                    for line in invoice.invoice_line_ids:
+                        if line.product_id.id == product.id:
+                            downpayment_total += line.price_total
             order.x_downpayment = downpayment_total
