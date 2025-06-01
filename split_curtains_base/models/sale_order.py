@@ -13,7 +13,7 @@ class SaleOrder(models.Model):
     x_remaining = fields.Monetary(
         string='Remaining',
         compute='_compute_remaining',
-        store=True,
+        store=True=True,
     )
 
     @api.depends('amount_total', 'x_downpayment')
@@ -23,13 +23,21 @@ class SaleOrder(models.Model):
 
     @api.depends('invoice_ids.invoice_line_ids', 'invoice_ids.state', 'invoice_ids.payment_state')
     def _compute_downpayment(self):
-        # نجيب المنتج الرسمي للـ Down Payment
-        product = self.env['product.product'].search([('name', '=', 'Down Payment')], limit=1)
+        # نحاول نجيب منتج الداون بايمنت باستخدام الاسم فقط
+        product_template = self.env['product.template'].search([('name', '=', 'Down Payment')], limit=1)
+        if not product_template:
+            for order in self:
+                order.x_downpayment = 0.0
+            return
+
+        product = self.env['product.product'].search([
+            ('product_tmpl_id', '=', product_template.id)
+        ], limit=1)
+
         for order in self:
-            downpayment_total = 0.0
-            for invoice in order.invoice_ids:
-                if invoice.state != 'cancel' and invoice.payment_state != 'not_paid':
-                    for line in invoice.invoice_line_ids:
-                        if line.product_id.id == product.id:
-                            downpayment_total += line.price_total
-            order.x_downpayment = downpayment_total
+            total = 0.0
+            for invoice in order.invoice_ids.filtered(lambda i: i.state != 'cancel'):
+                for line in invoice.invoice_line_ids:
+                    if line.product_id.id == product.id:
+                        total += line.price_total
+            order.x_downpayment = total
