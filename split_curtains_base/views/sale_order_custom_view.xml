@@ -8,8 +8,8 @@
       <!-- إضافة حقول العربون والمتبقي في Header -->
       <xpath expr="//sheet//group" position="inside">
         <group>
-          <field name="x_downpayment"/>
-          <field name="x_remaining"/>
+          <field name="x_downpayment" attrs="{'invisible': [('x_remaining', '=', 0)]}" />
+          <field name="x_remaining" attrs="{'invisible': [('x_remaining', '=', 0)]}" />
         </group>
       </xpath>
     </field>
