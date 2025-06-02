@@ -11,23 +11,25 @@ class SaleAdvancePaymentInv(models.TransientModel):
             if wizard.advance_payment_method == 'percentage':
                 for order_id in wizard._context.get('active_ids', []):
                     sale_order = self.env['sale.order'].browse(order_id)
-                    amount = sale_order.amount_total * wizard.amount / 100.0
 
                     for invoice in sale_order.invoice_ids:
-                        # نحذف كل السطور اللي فيها كلمة Down payment
-                        lines_to_remove = invoice.invoice_line_ids.filtered(lambda l: 'Down payment' in l.name)
+                        # 1. جمع كل سطور الدفعة
+                        dp_lines = invoice.invoice_line_ids.filtered(lambda l: 'Down payment' in l.name)
+                        total_dp = sum(dp_lines.mapped('price_subtotal'))
+
+                        # 2. حذف كل السطور
                         invoice.write({
-                            'invoice_line_ids': [(2, line.id) for line in lines_to_remove]
+                            'invoice_line_ids': [(2, line.id) for line in dp_lines]
                         })
 
-                        # نضيف سطر واحد سليم بالسالب
+                        # 3. إضافة سطر واحد فقط بالسالب
                         invoice.write({
                             'invoice_line_ids': [(0, 0, {
                                 'product_id': self.env.ref('sale.advance_product_0').id,
                                 'quantity': 1,
-                                'price_unit': -amount,
+                                'price_unit': -total_dp,
                                 'name': f"خصم دفعة مقدمة {wizard.amount:.2f}%",
-                                'tax_ids': [(6, 0, [])],
+                                'tax_ids': [(6, 0, [])],  # بدون ضرائب
                             })]
                         })
 
