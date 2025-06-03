@@ -1,12 +1,23 @@
 <odoo>
-  <record id="inherit_order_line_tree" model="ir.ui.view">
-    <field name="name">sale.order.line.tree.inherit.hide.downpayment</field>
-    <field name="model">sale.order.line</field>
-    <field name="inherit_id" ref="sale.view_order_line_tree"/>
+  <record id="view_order_form_split_cur_custom" model="ir.ui.view">
+    <field name="name">sale.order.form.split.cur.custom</field>
+    <field name="model">sale.order</field>
+    <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
-      <xpath expr="//tree" position="attributes">
-        <attribute name="domain">[('product_id.name', 'not ilike', 'down payment')]</attribute>
+
+      <!-- إضافة حقول العربون والمتبقي -->
+      <xpath expr="//sheet//group" position="inside">
+        <group>
+          <field name="x_downpayment"/>
+          <field name="x_remaining"/>
+        </group>
       </xpath>
+
+      <!-- تعديل order_line لإخفاء سطور down payment -->
+      <xpath expr="//field[@name='order_line']" position="attributes">
+        <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
+      </xpath>
+
     </field>
   </record>
 </odoo>
