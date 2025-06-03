@@ -3,8 +3,9 @@
   <record id="view_sale_order_line_tree_custom" model="ir.ui.view">
     <field name="name">sale.order.line.tree.custom</field>
     <field name="model">sale.order.line</field>
+    <field name="type">tree</field>
     <field name="arch" type="xml">
-      <tree string="Order Lines" domain="[('product_id.name', 'not ilike', 'down payment')]">
+      <tree string="Order Lines">
         <field name="product_id"/>
         <field name="name"/>
         <field name="product_uom_qty"/>
