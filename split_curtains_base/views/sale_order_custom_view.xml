@@ -1,24 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-  <record id="view_order_form_split_cur_custom" model="ir.ui.view">
-    <field name="name">sale.order.form.split.cur.custom</field>
-    <field name="model">sale.order</field>
-    <field name="inherit_id" ref="sale.view_order_form"/>
+  <record id="inherit_order_line_tree" model="ir.ui.view">
+    <field name="name">sale.order.line.tree.inherit.hide.downpayment</field>
+    <field name="model">sale.order.line</field>
+    <field name="inherit_id" ref="sale.view_order_line_tree"/>
     <field name="arch" type="xml">
-      <!-- إضافة حقول Paid Amount و Remaining في الهيدر -->
-      <xpath expr="//sheet//group" position="inside">
-        <group>
-          <field name="x_downpayment"/>
-          <field name="x_remaining"/>
-        </group>
+      <xpath expr="//tree" position="attributes">
+        <attribute name="domain">[('product_id.name', 'not ilike', 'down payment')]</attribute>
       </xpath>
-
-      <!-- تخصيص عرض Order Lines لإخفاء سطر الدفعة المقدمة -->
-      <xpath expr="//field[@name='order_line']" position="attributes">
-    <attribute name="view_mode">tree,form</attribute>
-    <attribute name="context">{'tree_view_ref': 'view_sale_order_line_tree_custom', 'domain': [('product_id.name', 'not ilike', 'down payment')]}</attribute>
-</xpath>
-
     </field>
   </record>
 </odoo>
