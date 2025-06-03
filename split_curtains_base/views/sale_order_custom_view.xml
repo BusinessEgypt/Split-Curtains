@@ -5,11 +5,12 @@
     <field name="model">sale.order</field>
     <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
-      <!-- إضافة حقول العربون والمتبقي في Header -->
+      <!-- إضافة حقول العربون والمتبقي في Header 
+           نجعلها مخفية إذا كانت قيمة x_remaining = 0 -->
       <xpath expr="//sheet//group" position="inside">
         <group>
-          <field name="x_downpayment" attrs="{'invisible': [('x_remaining', '=', 0)]}" />
-          <field name="x_remaining" attrs="{'invisible': [('x_remaining', '=', 0)]}" />
+          <field name="x_downpayment" attrs="{'invisible': [('x_remaining', '=', 0)]}"/>
+          <field name="x_remaining" attrs="{'invisible': [('x_remaining', '=', 0)]}"/>
         </group>
       </xpath>
     </field>
