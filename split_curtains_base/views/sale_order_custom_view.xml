@@ -1,12 +1,15 @@
 <odoo>
-  <record id="inherit_order_line_tree" model="ir.ui.view">
-    <field name="name">sale.order.line.tree.inherit.hide.downpayment</field>
+  <record id="view_sale_order_line_tree_custom" model="ir.ui.view">
+    <field name="name">sale.order.line.tree.custom</field>
     <field name="model">sale.order.line</field>
-    <field name="inherit_id" ref="sale.view_order_line_tree"/>
     <field name="arch" type="xml">
-      <xpath expr="//tree" position="attributes">
-        <attribute name="domain">[('product_id.name', 'not ilike', 'down payment')]</attribute>
-      </xpath>
+      <tree string="Order Lines">
+        <field name="product_id"/>
+        <field name="name"/>
+        <field name="product_uom_qty"/>
+        <field name="price_unit"/>
+        <field name="price_subtotal"/>
+      </tree>
     </field>
   </record>
 </odoo>
