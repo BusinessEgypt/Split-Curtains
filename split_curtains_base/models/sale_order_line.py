@@ -43,34 +43,29 @@ class SaleOrderLine(models.Model):
         for line in self:
             line.x_price_per_m2 = line.x_code.list_price or 0
 
-    @api.depends('x_total_area_m2', 'x_price_per_m2', 'product_id', 'order_id.x_downpayment')
+    @api.depends('x_total_area_m2', 'x_price_per_m2')
     def _compute_total_price(self):
         for line in self:
-            # لو داون بايمنت سطر سيستم (لو اسمه أو الكود فيه Down Payment أو Down)
-            dp_names = ['down payment', 'downpayment', 'عربون', 'دفعة مقدمة']
-            prod_name = (line.product_id.name or '').lower() if line.product_id else ''
-            if any(name in prod_name for name in dp_names):
-                order = line.order_id
-                if order and order.x_downpayment:
-                    line.x_total_price = -abs(order.x_downpayment)
-                else:
-                    line.x_total_price = 0.0
-                # لو اسم المنتج مش ظاهر (لسبب ما) افرض اسم المنتج هنا مؤقتًا
-                if not line.product_id:
-                    dp_product = self.env['product.product'].search([('name', 'ilike', 'down payment')], limit=1)
-                    if dp_product:
-                        line.product_id = dp_product.id
-                        line.x_code = dp_product.id
-            else:
-                line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
+            line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
 
-    @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code')
+    @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code', 'product_id')
     def _onchange_manual_fields(self):
         for line in self:
+            # لو داون بايمنت
+            if line.product_id and line.product_id.default_code == 'Down Payment':
+                # لازم تظهر القيمة بالسالب (قيمة الداون بايمنت)
+                down_amount = line.price_unit * line.product_uom_qty * -1
+                line.x_code = line.product_id.id
+                line.x_total_price = down_amount
+                # نظبط الاسم لو عايز يظهر
+                continue
+
             area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
             total_area = area * (line.x_quantity_units or 0)
             price_per_m2 = line.x_code.list_price or 0
+
             # ✅ ربط المنتج الرسمي بكود الستارة علشان Odoo يبدأ يحسب التوتال فعليًا
             line.product_id = line.x_code.id
             line.price_unit = price_per_m2
             line.product_uom_qty = total_area
+
