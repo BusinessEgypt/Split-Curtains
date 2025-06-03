@@ -46,16 +46,24 @@ class SaleOrderLine(models.Model):
     @api.depends('x_total_area_m2', 'x_price_per_m2')
     def _compute_total_price(self):
         for line in self:
-            line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
+            if line.product_id and line.product_id.default_code == 'Down Payment':
+                line.x_total_price = line.price_unit * line.product_uom_qty
+            else:
+                line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
 
-    @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code')
+    @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code', 'product_id')
     def _onchange_manual_fields(self):
         for line in self:
+            # 🟡 لو داون بايمنت، متطبقش حسابات المساحة
+            if line.product_id and line.product_id.default_code == 'Down Payment':
+                # نظبط الكود بس علشان يظهر الاسم
+                line.x_code = line.product_id
+                return
+
             area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
             total_area = area * (line.x_quantity_units or 0)
             price_per_m2 = line.x_code.list_price or 0
 
-            # ✅ ربط المنتج الرسمي بكود الستارة علشان Odoo يبدأ يحسب التوتال فعليًا
             line.product_id = line.x_code.id
             line.price_unit = price_per_m2
             line.product_uom_qty = total_area
