@@ -3,7 +3,6 @@
   <record id="view_sale_order_line_tree_custom" model="ir.ui.view">
     <field name="name">sale.order.line.tree.custom</field>
     <field name="model">sale.order.line</field>
-    <field name="inherit_id" ref="sale.view_order_tree"/>
     <field name="arch" type="xml">
       <tree string="Order Lines" domain="[('product_id.name', 'not ilike', 'down payment')]">
         <field name="product_id"/>
@@ -11,7 +10,7 @@
         <field name="product_uom_qty"/>
         <field name="price_unit"/>
         <field name="price_subtotal"/>
-        <!-- لو عندك أعمدة زيادة ضيفها هنا بنفس الترتيب -->
+        <!-- لو عندك أعمدة custom ضيفها هنا زي x_code, x_total_area_m2... إلخ -->
       </tree>
     </field>
   </record>
