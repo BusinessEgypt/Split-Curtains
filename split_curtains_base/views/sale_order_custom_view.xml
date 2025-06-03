@@ -15,8 +15,10 @@
 
       <!-- فلترة بنود الأوردر لإخفاء سطر الدفعة المقدمة -->
       <xpath expr="//field[@name='order_line']" position="attributes">
-        <attribute name="domain">[('product_id.name', 'not ilike', 'down payment')]</attribute>
-      </xpath>
+    <attribute name="view_mode">tree,form</attribute>
+    <attribute name="context">{'tree_view_ref':'view_sale_order_line_tree_custom'}</attribute>
+</xpath>
+
     </field>
   </record>
 </odoo>
