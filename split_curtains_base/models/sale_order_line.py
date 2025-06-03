@@ -46,14 +46,21 @@ class SaleOrderLine(models.Model):
     @api.depends('x_total_area_m2', 'x_price_per_m2', 'product_id', 'order_id.x_downpayment')
     def _compute_total_price(self):
         for line in self:
-            # لو داون بايمنت اعرضه بالسالب زي ما العميل محتاج يشوفه
-            if line.product_id and 'down payment' in (line.product_id.name or '').lower():
+            # لو داون بايمنت سطر سيستم (لو اسمه أو الكود فيه Down Payment أو Down)
+            dp_names = ['down payment', 'downpayment', 'عربون', 'دفعة مقدمة']
+            prod_name = (line.product_id.name or '').lower() if line.product_id else ''
+            if any(name in prod_name for name in dp_names):
                 order = line.order_id
-                # لو فيه قيمة داون بايمنت في الأوردر، اعرضها هنا بالسالب
                 if order and order.x_downpayment:
                     line.x_total_price = -abs(order.x_downpayment)
                 else:
                     line.x_total_price = 0.0
+                # لو اسم المنتج مش ظاهر (لسبب ما) افرض اسم المنتج هنا مؤقتًا
+                if not line.product_id:
+                    dp_product = self.env['product.product'].search([('name', 'ilike', 'down payment')], limit=1)
+                    if dp_product:
+                        line.product_id = dp_product.id
+                        line.x_code = dp_product.id
             else:
                 line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
 
@@ -63,7 +70,6 @@ class SaleOrderLine(models.Model):
             area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
             total_area = area * (line.x_quantity_units or 0)
             price_per_m2 = line.x_code.list_price or 0
-
             # ✅ ربط المنتج الرسمي بكود الستارة علشان Odoo يبدأ يحسب التوتال فعليًا
             line.product_id = line.x_code.id
             line.price_unit = price_per_m2
