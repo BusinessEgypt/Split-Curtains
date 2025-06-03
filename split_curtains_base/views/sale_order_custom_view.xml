@@ -5,7 +5,7 @@
     <field name="model">sale.order</field>
     <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
-      <!-- إضافة حقول العربون والمتبقي في Header -->
+      <!-- إضافة حقول Paid Amount و Remaining في الهيدر -->
       <xpath expr="//sheet//group" position="inside">
         <group>
           <field name="x_downpayment"/>
@@ -13,12 +13,11 @@
         </group>
       </xpath>
 
-      <!-- فلترة بنود الأوردر لإخفاء سطر الدفعة المقدمة -->
+      <!-- تخصيص عرض Order Lines لإخفاء سطر الدفعة المقدمة -->
       <xpath expr="//field[@name='order_line']" position="attributes">
-    <attribute name="view_mode">tree,form</attribute>
-    <attribute name="context">{'tree_view_ref':'view_sale_order_line_tree_custom'}</attribute>
-</xpath>
-
+        <attribute name="view_mode">tree,form</attribute>
+        <attribute name="context">{'tree_view_ref':'view_sale_order_line_tree_custom'}</attribute>
+      </xpath>
     </field>
   </record>
 </odoo>
