@@ -44,28 +44,27 @@ class SaleOrderLine(models.Model):
             line.x_price_per_m2 = line.x_code.list_price or 0
 
     @api.depends('x_total_area_m2', 'x_price_per_m2', 'product_id', 'price_unit', 'product_uom_qty', 'price_subtotal')
-def _compute_total_price(self):
-    for line in self:
-        if line.product_id and (
-            'down' in (line.product_id.name or '').lower()
-            or 'down' in (line.product_id.default_code or '').lower()
-        ):
-            # يظهر بالسالب
-            line.x_total_price = -abs(line.price_subtotal or 0)
-        else:
-            line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
-
+    def _compute_total_price(self):
+        for line in self:
+            if line.product_id and (
+                'down' in (line.product_id.name or '').lower()
+                or 'down' in (line.product_id.default_code or '').lower()
+            ):
+                # يظهر بالسالب لأي منتج اسمه أو كوده فيه down
+                line.x_total_price = -abs(line.price_subtotal or 0)
+            else:
+                line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
 
     @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code', 'product_id')
     def _onchange_manual_fields(self):
         for line in self:
-            # لو المنتج Down Payment
+            # لو المنتج Down Payment أو فيه كلمة down
             if line.product_id and (
-                line.product_id.name == 'Down Payment'
-                or line.product_id.default_code == 'Down Payment'
+                'down' in (line.product_id.name or '').lower()
+                or 'down' in (line.product_id.default_code or '').lower()
             ):
                 line.x_code = line.product_id
-                # مفيش تغيير في الأسعار أو الكميات هنا (سابها زي ما هي)
+                # سابه زي ما هو، مش هيغير الأسعار ولا الكميات هنا
                 return
             else:
                 area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
