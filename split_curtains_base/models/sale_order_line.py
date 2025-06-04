@@ -44,16 +44,17 @@ class SaleOrderLine(models.Model):
             line.x_price_per_m2 = line.x_code.list_price or 0
 
     @api.depends('x_total_area_m2', 'x_price_per_m2', 'product_id', 'price_unit', 'product_uom_qty', 'price_subtotal')
-    def _compute_total_price(self):
-        for line in self:
-            if line.product_id and (
-                line.product_id.name == 'Down Payment'
-                or line.product_id.default_code == 'Down Payment'
-            ):
-                # يظهر في x_total_price وبالسالب
-                line.x_total_price = -abs(line.price_subtotal or 0)
-            else:
-                line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
+def _compute_total_price(self):
+    for line in self:
+        if line.product_id and (
+            'down' in (line.product_id.name or '').lower()
+            or 'down' in (line.product_id.default_code or '').lower()
+        ):
+            # يظهر بالسالب
+            line.x_total_price = -abs(line.price_subtotal or 0)
+        else:
+            line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
+
 
     @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code', 'product_id')
     def _onchange_manual_fields(self):
