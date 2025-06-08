@@ -50,22 +50,33 @@ class SaleOrder(models.Model):
         })
 
     def action_create_purchase(self):
-        PurchaseOrder = self.env['purchase.order']
-        for order in self:
-            if not order.x_accounts_approval:
-                raise UserError(_("لا يمكن إنشاء أمر شراء إلا بعد موافقة الحسابات."))
+    PurchaseOrder = self.env['purchase.order']
+    for order in self:
+        if not order.x_accounts_approval:
+            raise UserError(_("لا يمكن إنشاء أمر شراء إلا بعد موافقة الحسابات."))
 
-            _logger.info("✅ بدء إنشاء أمر شراء لـ Order: %s", order.name)
-            if not order.order_line:
-                raise UserError(_("لا يمكن إنشاء أمر شراء بدون بنود في الطلب."))
+        _logger.info("✅ بدء إنشاء أمر شراء لـ Order: %s", order.name)
+        if not order.order_line:
+            raise UserError(_("لا يمكن إنشاء أمر شراء بدون بنود في الطلب."))
 
-            po = PurchaseOrder.create({
-                'partner_id': order.partner_id.id,
-                'origin': order.name,
-                'order_line': [self._prepare_purchase_order_line(l) for l in order.order_line],
-            })
+        po = PurchaseOrder.create({
+            'partner_id': order.partner_id.id,
+            'origin': order.name,
+            'order_line': [self._prepare_purchase_order_line(l) for l in order.order_line],
+        })
 
-            po.message_post(body=f'🆕 تم إنشاء أمر الشراء تلقائيًا من {order.name}')
-            _logger.info("🆕 تم إنشاء Purchase Order: %s", po.name)
+        po.message_post(body=f'🆕 تم إنشاء أمر الشراء تلقائيًا من {order.name}')
+        _logger.info("🆕 تم إنشاء Purchase Order: %s", po.name)
 
-        return True
+        # ✅ هنا نرجّع الـ PO الجديد علشان يفتح مباشرة
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Purchase Order',
+            'res_model': 'purchase.order',
+            'view_mode': 'form',
+            'res_id': po.id,
+            'target': 'current',
+        }
+
+    return True
+
