@@ -2,6 +2,9 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from odoo.fields import Date
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
@@ -35,6 +38,8 @@ class SaleOrder(models.Model):
             order.x_remaining = order.amount_total - paid_total
 
     def _prepare_purchase_order_line(self, line):
+        if not line.product_id:
+            raise UserError(_("السطر يحتوي على منتج غير معروف، تأكد من ربط الكود بالمنتج."))
         return (0, 0, {
             'product_id': line.product_id.id,
             'name': line.name,
@@ -49,10 +54,18 @@ class SaleOrder(models.Model):
         for order in self:
             if not order.x_accounts_approval:
                 raise UserError(_("لا يمكن إنشاء أمر شراء إلا بعد موافقة الحسابات."))
+
+            _logger.info("✅ بدء إنشاء أمر شراء لـ Order: %s", order.name)
+            if not order.order_line:
+                raise UserError(_("لا يمكن إنشاء أمر شراء بدون بنود في الطلب."))
+
             po = PurchaseOrder.create({
                 'partner_id': order.partner_id.id,
                 'origin': order.name,
                 'order_line': [self._prepare_purchase_order_line(l) for l in order.order_line],
             })
-            po.message_post(body=f'Created automatically from {order.name}')
+
+            po.message_post(body=f'🆕 تم إنشاء أمر الشراء تلقائيًا من {order.name}')
+            _logger.info("🆕 تم إنشاء Purchase Order: %s", po.name)
+
         return True
