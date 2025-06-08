@@ -24,16 +24,13 @@
                 type="object"
                 string="Create Manufacturing Order"
                 class="btn-primary"/>
-      </xpath>
 
-      <!-- الزر الجديد لعرض أوامر التصنيع -->
-      <xpath expr="//header" position="inside">
-        <t t-if="record.purchase_order_count.value != 0">
-          <button name="action_view_purchase_orders"
-                  type="object"
-                  string="Manufacturing Orders"
-                  icon="fa-industry"/>
-        </t>
+        <!-- الزر البديل بدون t-if، باستخدام attrs التقليدية -->
+        <button name="action_view_purchase_orders"
+                type="object"
+                string="Manufacturing Orders"
+                icon="fa-industry"
+                attrs="{'invisible': [('purchase_order_count', '=', 0)]}"/>
       </xpath>
 
     </field>
