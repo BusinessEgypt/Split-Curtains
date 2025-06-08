@@ -40,20 +40,13 @@ class SaleOrder(models.Model):
     def _prepare_purchase_order_line(self, line):
         if not line.product_id:
             raise UserError(_("The line contains an undefined product."))
-
         return (0, 0, {
             'product_id': line.product_id.id,
             'name': line.name,
             'product_qty': line.product_uom_qty,
             'product_uom': line.product_uom.id,
-            'price_unit': line.product_id.standard_price,  # السعر المخصص للشراء
+            'price_unit': line.price_unit,
             'date_planned': Date.today(),
-
-            # ✅ الحقول الفنية المنقولة من Sales Order
-            'x_width_m': line.x_width_m,
-            'x_height_m': line.x_height_m,
-            'x_quantity_units': line.x_quantity_units,
-            'x_total_area_m2': line.x_total_area_m2,
         })
 
     def action_create_purchase(self):
