@@ -11,6 +11,7 @@
     'author': 'Split Curtains',
     'website': 'https://www.splitcurtains.com/',
     'depends': ['sale'],
+    'depends': ['sale', 'purchase'],
     'data': [
         'views/sale_order_line_form_view.xml',
         'views/sale_order_custom_view.xml',
