@@ -56,7 +56,7 @@ class SaleOrder(models.Model):
                 'product_qty': line.product_uom_qty,
                 'product_uom_id': line.product_uom.id,
                 'origin': order.name,
-                'date_planned_start': Date.today(),
+                'date_start': Date.today(),
                 'location_src_id': line.product_id.property_stock_production.id,
                 'location_dest_id': order.warehouse_id.lot_stock_id.id,  # ✅ استخدام مخزن المخزن الرئيسي كـ استلام
             })
