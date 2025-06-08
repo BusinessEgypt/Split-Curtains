@@ -18,13 +18,12 @@
         <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
       </xpath>
 
-      <!-- زر توليد أمر الشراء يظهر فقط بعد موافقة الحسابات -->
+      <!-- زر توليد أمر الشراء بدون attrs -->
       <xpath expr="//header" position="inside">
         <button name="action_create_purchase"
                 type="object"
                 string="Create Purchase Order"
-                class="btn-primary"
-                attrs="{'invisible': [('x_accounts_approval', '!=', True)]}"/>
+                class="btn-primary"/>
       </xpath>
 
     </field>

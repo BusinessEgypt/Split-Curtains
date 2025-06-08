@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 from odoo.fields import Date
 
 class SaleOrder(models.Model):
@@ -41,6 +42,8 @@ class SaleOrder(models.Model):
     def action_create_purchase(self):
         PurchaseOrder = self.env['purchase.order']
         for order in self:
+            if not order.x_accounts_approval:
+                raise UserError(_("لا يمكن إنشاء أمر شراء إلا بعد موافقة الحسابات."))
             po = PurchaseOrder.create({
                 'partner_id': order.partner_id.id,
                 'origin': order.name,
