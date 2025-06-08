@@ -18,19 +18,17 @@
         <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
       </xpath>
 
-      <!-- زر إنشاء أمر التصنيع -->
+      <!-- زر إنشاء أمر التصنيع وزر فتحهم بدون شروط attrs -->
       <xpath expr="//header" position="inside">
         <button name="action_create_purchase"
                 type="object"
                 string="Create Manufacturing Order"
                 class="btn-primary"/>
-
-        <!-- الزر بدون أيقونة -->
+                
         <button name="action_view_purchase_orders"
                 type="object"
                 string="Manufacturing Orders"
-                class="btn-secondary"
-                attrs="{'invisible': [('purchase_order_count', '=', 0)]}"/>
+                class="btn-secondary"/>
       </xpath>
 
     </field>
