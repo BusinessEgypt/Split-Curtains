@@ -26,16 +26,8 @@ class SaleOrder(models.Model):
         default=False,
     )
 
-    purchase_order_count = fields.Integer(
-        compute='_compute_po_data',
-        string="PO Count"
-    )
-    purchase_order_ids = fields.One2many(
-        'purchase.order',
-        'origin',
-        compute='_compute_po_data',
-        string="Purchase Orders"
-    )
+    purchase_order_count = fields.Integer(compute='_compute_po_data', string="PO Count")
+    purchase_order_ids = fields.One2many('purchase.order', 'origin', compute='_compute_po_data', string="Purchase Orders")
 
     @api.depends('amount_total', 'invoice_ids.amount_total', 'invoice_ids.state', 'invoice_ids.move_type')
     def _compute_paid_amount_and_remaining(self):
@@ -92,7 +84,7 @@ class SaleOrder(models.Model):
             po = PurchaseOrder.create({
                 'partner_id': order.partner_id.id,
                 'origin': f'Manufacturing Order from {order.name}',
-                'order_line': [self._prepare_purchase_order_line(l) for l in order.order_line],
+                'order_line': [self._prepare_purchase_order_line(l) for l in order.order_line if l.product_id],
             })
 
             po.message_post(body=f'🧰 Auto-created PO (as Manufacturing Order) from {order.name}')
