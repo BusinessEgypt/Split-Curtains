@@ -108,12 +108,9 @@ class SaleOrder(models.Model):
             order.purchase_order_count = len(pos)
 
     def action_view_purchase_orders(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Manufacturing Orders',
-            'res_model': 'purchase.order',
-            'view_mode': 'tree,form',
-            'domain': [('origin', '=', self.name)],
-            'context': {'create': False},
-        }
+    self.ensure_one()
+    action = self.env.ref('purchase.purchase_rfq').read()[0]
+    action['domain'] = [('origin', 'ilike', self.name)]
+    action['context'] = {'search_default_draft': 1}
+    return action
+
