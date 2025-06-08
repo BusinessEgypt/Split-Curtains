@@ -25,11 +25,11 @@
                 string="Create Manufacturing Order"
                 class="btn-primary"/>
 
-        <!-- الزر البديل بدون t-if، باستخدام attrs التقليدية -->
+        <!-- الزر بدون أيقونة -->
         <button name="action_view_purchase_orders"
                 type="object"
                 string="Manufacturing Orders"
-                icon="fa-industry"
+                class="btn-secondary"
                 attrs="{'invisible': [('purchase_order_count', '=', 0)]}"/>
       </xpath>
 
