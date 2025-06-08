@@ -47,7 +47,6 @@ class SaleOrder(models.Model):
             if not order.order_line:
                 raise UserError(_("لا يمكن إنشاء أمر تصنيع بدون بنود."))
 
-            # حاليًا هنستخدم أول منتج فقط كنموذج (نقدر نطوره لاحقًا يدعم أكثر من منتج)
             line = order.order_line[0]
             if not line.product_id:
                 raise UserError(_("السطر يحتوي على منتج غير معروف."))
@@ -59,7 +58,7 @@ class SaleOrder(models.Model):
                 'origin': order.name,
                 'date_planned_start': Date.today(),
                 'location_src_id': line.product_id.property_stock_production.id,
-                'location_dest_id': line.product_id.categ_id.property_stock_valuation.id or order.warehouse_id.lot_stock_id.id,
+                'location_dest_id': order.warehouse_id.lot_stock_id.id,  # ✅ استخدام مخزن المخزن الرئيسي كـ استلام
             })
 
             mo.message_post(body=f'🧰 تم إنشاء أمر تصنيع تلقائيًا من {order.name}')
