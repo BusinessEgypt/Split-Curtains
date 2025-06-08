@@ -18,12 +18,19 @@
         <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
       </xpath>
 
-      <!-- Button: Create Manufacturing Order (actually PO) -->
+      <!-- زر إنشاء أمر التصنيع -->
       <xpath expr="//header" position="inside">
         <button name="action_create_purchase"
                 type="object"
                 string="Create Manufacturing Order"
                 class="btn-primary"/>
+                
+        <!-- الزر الجديد لعرض أوامر التصنيع -->
+        <button name="action_view_purchase_orders"
+                type="object"
+                string="Manufacturing Orders"
+                icon="fa-industry"
+                attrs="{'invisible': [('purchase_order_count', '=', 0)]}"/>
       </xpath>
 
     </field>

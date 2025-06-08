@@ -26,6 +26,9 @@ class SaleOrder(models.Model):
         default=False,
     )
 
+    purchase_order_count = fields.Integer(compute='_compute_po_data', string="PO Count")
+    purchase_order_ids = fields.One2many('purchase.order', 'origin', compute='_compute_po_data', string="Purchase Orders")
+
     @api.depends('amount_total', 'invoice_ids.amount_total', 'invoice_ids.state', 'invoice_ids.move_type')
     def _compute_paid_amount_and_remaining(self):
         for order in self:
@@ -57,7 +60,6 @@ class SaleOrder(models.Model):
             'price_unit': price_per_m2,
             'date_planned': Date.today(),
 
-            # ✅ الحقول الفنية الكاملة
             'x_code': line.x_code.id if line.x_code else False,
             'x_type': line.x_type,
             'x_width_m': width,
@@ -98,3 +100,20 @@ class SaleOrder(models.Model):
             }
 
         return True
+
+    def _compute_po_data(self):
+        for order in self:
+            pos = self.env['purchase.order'].search([('origin', '=', order.name)])
+            order.purchase_order_ids = pos
+            order.purchase_order_count = len(pos)
+
+    def action_view_purchase_orders(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Manufacturing Orders',
+            'res_model': 'purchase.order',
+            'view_mode': 'tree,form',
+            'domain': [('origin', '=', self.name)],
+            'context': {'create': False},
+        }
