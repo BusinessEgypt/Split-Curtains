@@ -18,6 +18,11 @@ class SaleOrder(models.Model):
         store=True,
     )
 
+    x_accounts_approval = fields.Boolean(
+        string='Accounts Approval',
+        default=False,
+    )
+
     @api.depends('amount_total', 'invoice_ids.amount_total', 'invoice_ids.state', 'invoice_ids.move_type')
     def _compute_paid_amount_and_remaining(self):
         for order in self:
