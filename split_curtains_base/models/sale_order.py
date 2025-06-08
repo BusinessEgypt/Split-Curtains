@@ -26,8 +26,16 @@ class SaleOrder(models.Model):
         default=False,
     )
 
-    purchase_order_count = fields.Integer(compute='_compute_po_data', string="PO Count")
-    purchase_order_ids = fields.One2many('purchase.order', 'origin', compute='_compute_po_data', string="Purchase Orders")
+    purchase_order_count = fields.Integer(
+        compute='_compute_po_data',
+        string="PO Count"
+    )
+    purchase_order_ids = fields.One2many(
+        'purchase.order',
+        'origin',
+        compute='_compute_po_data',
+        string="Purchase Orders"
+    )
 
     @api.depends('amount_total', 'invoice_ids.amount_total', 'invoice_ids.state', 'invoice_ids.move_type')
     def _compute_paid_amount_and_remaining(self):
@@ -108,9 +116,8 @@ class SaleOrder(models.Model):
             order.purchase_order_count = len(pos)
 
     def action_view_purchase_orders(self):
-    self.ensure_one()
-    action = self.env.ref('purchase.purchase_rfq').read()[0]
-    action['domain'] = [('origin', 'ilike', self.name)]
-    action['context'] = {'search_default_draft': 1}
-    return action
-
+        self.ensure_one()
+        action = self.env.ref('purchase.purchase_rfq').read()[0]
+        action['domain'] = [('origin', 'ilike', self.name)]
+        action['context'] = {'search_default_draft': 1}
+        return action
