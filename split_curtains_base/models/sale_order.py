@@ -38,16 +38,36 @@ class SaleOrder(models.Model):
             order.x_remaining = order.amount_total - paid_total
 
     def _prepare_purchase_order_line(self, line):
-        if not line.product_id:
-            raise UserError(_("The line contains an undefined product."))
-        return (0, 0, {
-            'product_id': line.product_id.id,
-            'name': line.name,
-            'product_qty': line.product_uom_qty,
-            'product_uom': line.product_uom.id,
-            'price_unit': line.price_unit,
-            'date_planned': Date.today(),
-        })
+    if not line.product_id:
+        raise UserError(_("The line contains an undefined product."))
+
+    width = line.x_width_m or 0
+    height = line.x_height_m or 0
+    units = line.x_quantity_units or 0
+    unit_area = max(width * height, 2)
+    total_area = unit_area * units
+    price_per_m2 = line.product_id.standard_price or 0
+    total_price = total_area * price_per_m2
+
+    return (0, 0, {
+        'product_id': line.product_id.id,
+        'name': line.name,
+        'product_qty': line.product_uom_qty,
+        'product_uom': line.product_uom.id,
+        'price_unit': price_per_m2,  # سعر الشراء
+        'date_planned': Date.today(),
+
+        # ✅ الحقول الفنية كاملة
+        'x_code': line.x_code.id if line.x_code else False,
+        'x_type': line.x_type,
+        'x_width_m': width,
+        'x_height_m': height,
+        'x_quantity_units': units,
+        'x_unit_area_m2': unit_area,
+        'x_total_area_m2': total_area,
+        'x_price_per_m2': price_per_m2,
+        'x_total_price': total_price,
+    })
 
     def action_create_purchase(self):
         PurchaseOrder = self.env['purchase.order']
