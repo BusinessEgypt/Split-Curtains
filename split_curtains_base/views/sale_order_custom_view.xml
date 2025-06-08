@@ -18,11 +18,11 @@
         <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
       </xpath>
 
-      <!-- زر توليد أمر الشراء بدون attrs -->
+      <!-- زر توليد أمر تصنيع بدل أمر شراء -->
       <xpath expr="//header" position="inside">
-        <button name="action_create_purchase"
+        <button name="action_create_manufacturing"
                 type="object"
-                string="Create Purchase Order"
+                string="Create Manufacturing Order"
                 class="btn-primary"/>
       </xpath>
 
