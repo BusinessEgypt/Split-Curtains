@@ -1,50 +1,34 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
-from odoo.fields import Date
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     x_downpayment = fields.Monetary(
-        string='Paid Amount',
-        compute='_compute_paid_amount_and_remaining',
+        string='Down Payment',
+        compute='_compute_downpayment',
         store=True,
         currency_field='currency_id',
     )
     x_remaining = fields.Monetary(
         string='Remaining',
-        compute='_compute_paid_amount_and_remaining',
+        compute='_compute_remaining',
         store=True,
     )
 
-    @api.depends('amount_total', 'invoice_ids.amount_total', 'invoice_ids.state', 'invoice_ids.move_type')
-    def _compute_paid_amount_and_remaining(self):
+    @api.depends('amount_total', 'x_downpayment')
+    def _compute_remaining(self):
         for order in self:
-            paid_total = sum(
-                invoice.amount_total
-                for invoice in order.invoice_ids
-                if invoice.move_type == 'out_invoice' and invoice.state == 'posted'
-            )
-            order.x_downpayment = paid_total
-            order.x_remaining = order.amount_total - paid_total
+            order.x_remaining = order.amount_total - (order.x_downpayment or 0.0)
 
-    def _prepare_purchase_order_line(self, line):
-        return (0, 0, {
-            'product_id': line.product_id.id,
-            'name': line.name,
-            'product_qty': line.product_uom_qty,
-            'product_uom': line.product_uom.id,
-            'price_unit': line.price_unit,
-            'date_planned': Date.today(),
-        })
-
-    def action_create_purchase(self):
-        PurchaseOrder = self.env['purchase.order']
+    @api.depends('invoice_ids.invoice_line_ids')
+    def _compute_downpayment(self):
         for order in self:
-            po = PurchaseOrder.create({
-                'partner_id': order.partner_id.id,
-                'origin': order.name,
-                'order_line': [self._prepare_purchase_order_line(l) for l in order.order_line],
-            })
-            po.message_post(body=f'Created automatically from {order.name}')
-        return True
+            total = 0.0
+            for invoice in order.invoice_ids:
+                if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
+                    for line in invoice.invoice_line_ids:
+                        label = (line.name or "").lower()
+                        if 'down payment' in label:
+                            total += line.price_total
+            order.x_downpayment = total
