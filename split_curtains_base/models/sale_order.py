@@ -37,39 +37,43 @@ class SaleOrder(models.Model):
             order.x_downpayment = paid_total
             order.x_remaining = order.amount_total - paid_total
 
-    def action_create_manufacturing(self):
-        MrpProduction = self.env['mrp.production']
+    def _prepare_purchase_order_line(self, line):
+        if not line.product_id:
+            raise UserError(_("The line contains an undefined product."))
+        return (0, 0, {
+            'product_id': line.product_id.id,
+            'name': line.name,
+            'product_qty': line.product_uom_qty,
+            'product_uom': line.product_uom.id,
+            'price_unit': line.price_unit,
+            'date_planned': Date.today(),
+        })
+
+    def action_create_purchase(self):
+        PurchaseOrder = self.env['purchase.order']
         for order in self:
             if not order.x_accounts_approval:
-                raise UserError(_("لا يمكن إنشاء أمر تصنيع إلا بعد موافقة الحسابات."))
+                raise UserError(_("Accounts must approve before creating a manufacturing order."))
 
-            _logger.info("✅ بدء إنشاء أمر تصنيع لـ Order: %s", order.name)
+            _logger.info("✅ Creating PO (named Manufacturing Order) for SO: %s", order.name)
             if not order.order_line:
-                raise UserError(_("لا يمكن إنشاء أمر تصنيع بدون بنود."))
+                raise UserError(_("Cannot proceed without order lines."))
 
-            line = order.order_line[0]
-            if not line.product_id:
-                raise UserError(_("السطر يحتوي على منتج غير معروف."))
-
-            mo = MrpProduction.create({
-                'product_id': line.product_id.id,
-                'product_qty': line.product_uom_qty,
-                'product_uom_id': line.product_uom.id,
-                'origin': order.name,
-                'date_start': Date.today(),
-                'location_src_id': line.product_id.property_stock_production.id,
-                'location_dest_id': order.warehouse_id.lot_stock_id.id,  # ✅ استخدام مخزن المخزن الرئيسي كـ استلام
+            po = PurchaseOrder.create({
+                'partner_id': order.partner_id.id,
+                'origin': f'Manufacturing Order from {order.name}',
+                'order_line': [self._prepare_purchase_order_line(l) for l in order.order_line],
             })
 
-            mo.message_post(body=f'🧰 تم إنشاء أمر تصنيع تلقائيًا من {order.name}')
-            _logger.info("🆕 تم إنشاء Manufacturing Order: %s", mo.name)
+            po.message_post(body=f'🧰 Auto-created PO (as Manufacturing Order) from {order.name}')
+            _logger.info("🆕 Created PO: %s", po.name)
 
             return {
                 'type': 'ir.actions.act_window',
                 'name': 'Manufacturing Order',
-                'res_model': 'mrp.production',
+                'res_model': 'purchase.order',
                 'view_mode': 'form',
-                'res_id': mo.id,
+                'res_id': po.id,
                 'target': 'current',
             }
 
