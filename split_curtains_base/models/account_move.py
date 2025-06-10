@@ -7,8 +7,14 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    @api.constrains('payment_state')
-    def _check_and_create_purchase_orders(self):
+    @api.model
+    def write(self, vals):
+        res = super(AccountMove, self).write(vals)
+        if 'payment_state' in vals and vals['payment_state'] == 'paid':
+            self._create_purchase_orders_if_needed()
+        return res
+
+    def _create_purchase_orders_if_needed(self):
         for inv in self.filtered(lambda m: m.move_type == 'out_invoice' and m.payment_state == 'paid'):
             sale_order = inv.invoice_origin and self.env['sale.order'].search([('name', '=', inv.invoice_origin)], limit=1)
             if not sale_order:
