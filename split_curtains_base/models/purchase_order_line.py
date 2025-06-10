@@ -8,6 +8,8 @@ class PurchaseOrderLine(models.Model):
     x_width_m = fields.Float(string="Width (m)")
     x_height_m = fields.Float(string="Height (m)")
     x_unit_area_m = fields.Float(string="Unit Area (m²)")
+    # alias field to match the view reference:
+    x_unit_area_m2 = fields.Float(string="Unit Area (m²)", related='x_unit_area_m', store=True)
     x_quantity_units = fields.Float(string="Quantity Units")
     x_area_m = fields.Float(string="Total Area (m²)")
     x_price_per_m_2 = fields.Float(string="Price per m²")
@@ -18,7 +20,8 @@ class PurchaseOrderLine(models.Model):
         ('accessory', 'Accessory'),
     ], string="Type")
 
-    currency_id = fields.Many2one('res.currency', string='Currency', related='order_id.currency_id', store=True)
+    currency_id = fields.Many2one('res.currency', string='Currency',
+                                  related='order_id.currency_id', store=True)
 
     @api.onchange('x_width_m', 'x_height_m')
     def _compute_unit_area(self):
