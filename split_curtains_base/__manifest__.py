@@ -13,6 +13,7 @@
     'depends': ['sale'],
     'data': [
         'views/sale_order_line_form_view.xml',
+        'views/sale_order_custom_view.xml',
     ],
     'installable': True,
     'application': False,

@@ -5,30 +5,24 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     x_downpayment = fields.Monetary(
-        string='Down Payment',
-        compute='_compute_downpayment',
+        string='Paid Amount',  # الاسم الظاهري الجديد فقط
+        compute='_compute_paid_amount_and_remaining',
         store=True,
         currency_field='currency_id',
     )
     x_remaining = fields.Monetary(
         string='Remaining',
-        compute='_compute_remaining',
+        compute='_compute_paid_amount_and_remaining',
         store=True,
     )
 
-    @api.depends('amount_total', 'x_downpayment')
-    def _compute_remaining(self):
+    @api.depends('amount_total', 'invoice_ids.amount_total', 'invoice_ids.state', 'invoice_ids.move_type')
+    def _compute_paid_amount_and_remaining(self):
         for order in self:
-            order.x_remaining = order.amount_total - (order.x_downpayment or 0.0)
-
-    @api.depends('invoice_ids.invoice_line_ids')
-    def _compute_downpayment(self):
-        for order in self:
-            total = 0.0
-            for invoice in order.invoice_ids:
-                if invoice.move_type == 'out_invoice' and invoice.state != 'cancel':
-                    for line in invoice.invoice_line_ids:
-                        label = (line.name or "").lower()
-                        if 'down payment' in label:
-                            total += line.price_total
-            order.x_downpayment = total
+            paid_total = sum(
+                invoice.amount_total
+                for invoice in order.invoice_ids
+                if invoice.move_type == 'out_invoice' and invoice.state == 'posted'
+            )
+            order.x_downpayment = paid_total
+            order.x_remaining = order.amount_total - paid_total

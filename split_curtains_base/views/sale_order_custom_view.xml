@@ -1,17 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <record id="view_order_form_split_cur_custom" model="ir.ui.view">
     <field name="name">sale.order.form.split.cur.custom</field>
     <field name="model">sale.order</field>
     <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
-      <!-- إضافة حقول العربون والمتبقي في Header -->
+
+      <!-- إضافة حقول العربون والمتبقي -->
       <xpath expr="//sheet//group" position="inside">
         <group>
           <field name="x_downpayment"/>
           <field name="x_remaining"/>
         </group>
       </xpath>
+
+      <!-- تعديل order_line لإخفاء سطور down payment -->
+      <xpath expr="//field[@name='order_line']" position="attributes">
+        <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
+      </xpath>
+
     </field>
   </record>
 </odoo>
