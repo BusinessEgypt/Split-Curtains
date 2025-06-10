@@ -40,4 +40,4 @@ class SaleOrder(models.Model):
             order.x_remaining = order.amount_total - paid_total
 
     # تم إزالة دالة _prepare_purchase_order_line ودالة action_create_purchase
-    # كما طلبت في المرة السابقة
+    # كما طلبت في المرات السابقة

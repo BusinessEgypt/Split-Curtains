@@ -28,37 +28,31 @@ class AccountMove(models.Model):
             # تجميع سطور أمر الشراء حسب المورد
             po_lines_by_vendor = defaultdict(list)
             
+            # جلب الـ routes الأساسية لـ Buy و Dropship
+            # استخدام ref لضمان الحصول على الـ ID الصحيح بغض النظر عن الترجمة أو تغيير الاسم
+            buy_route = self.env.ref('purchase_stock.route_warehouse0_buy', raise_if_not_found=False)
+            dropship_route = self.env.ref('stock_dropshipping.route_transit_location_dropship', raise_if_not_found=False)
+            
+            if not (buy_route and dropship_route):
+                _logger.warning("Could not find 'Buy' or 'Dropship' routes. PO creation might not work as expected.")
+
             for sl in sale_order.order_line:
                 # تجاهل سطور الدفعات المقدمة أو المنتجات الخدمية
                 if sl.product_id and sl.product_id.type != 'service' and not sl.product_id.is_downpayment:
-                    # التحقق من route_id (مثلاً 'Buy' أو 'Dropship')
-                    # افترض أن 'Buy' (ms_rule_buy) و 'Dropship' (stock_rules.stock_rule_dropship) هي الـ routes المعنية
-                    # تأكد من أن الـ route IDs صحيحة في نظامك
                     
-                    # ابحث عن قواعد إعادة التخزين المرتبطة بالمنتج والـ Warehouse (إذا كان لديك warehouse محدد)
-                    # هنا نفترض وجود route_id مباشر على سطر أمر البيع إذا كان موجودًا
+                    product_has_relevant_route = False
                     
-                    # الطريقة الأكثر أمانًا هي التحقق من rules المرتبطة بالمنتج أو فئته
-                    # أو إذا كنت تستخدم route_id على سطر أمر البيع:
-                    is_dropship_or_buy = False
-                    if sl.route_id:
-                        if sl.route_id.name == 'Dropship' or sl.route_id.name == 'Buy': # تأكد من أسماء الـ routes الفعلية في Odoo
-                            is_dropship_or_buy = True
-                    else: # إذا لم يكن هناك route_id على السطر، تحقق من المنتج
-                        # ابحث عن أي rules ذات صلة بالمنتج أو بفئته، والتي نوعها buy
-                        mto_route = self.env.ref('stock.route_warehouse0_mto', raise_if_not_found=False)
-                        dropship_route = self.env.ref('stock_dropshipping.route_transit_location_dropship', raise_if_not_found=False)
-                        buy_route = self.env.ref('purchase_stock.route_warehouse0_buy', raise_if_not_found=False)
-
+                    # 1. التحقق من الـ route المباشر على سطر أمر البيع إذا كان موجودًا
+                    if sl.route_id and (sl.route_id == buy_route or sl.route_id == dropship_route):
+                        product_has_relevant_route = True
+                    # 2. إذا لم يكن هناك route مباشر، تحقق من الـ routes على المنتج أو فئته
+                    elif sl.product_id:
                         product_routes = sl.product_id.route_ids | sl.product_id.categ_id.route_ids
-                        
-                        if (dropship_route and dropship_route in product_routes) or \
-                           (buy_route and buy_route in product_routes) or \
-                           (mto_route and mto_route in product_routes and sl.product_id.seller_ids): # MTO + has vendor
-                            is_dropship_or_buy = True
-
-
-                    if is_dropship_or_buy and sl.product_id.seller_ids:
+                        if (buy_route and buy_route in product_routes) or \
+                           (dropship_route and dropship_route in product_routes):
+                            product_has_relevant_route = True
+                            
+                    if product_has_relevant_route and sl.product_id.seller_ids:
                         # الحصول على المورد الافتراضي للمنتج أو أول مورد
                         vendor = sl.product_id.seller_ids[0].partner_id
                         if vendor:
@@ -82,7 +76,7 @@ class AccountMove(models.Model):
                         else:
                             _logger.warning(f"Product {sl.product_id.name} on SO {sale_order.name} has no vendor configured. Skipping PO line.")
                     else:
-                        _logger.info(f"Product {sl.product_id.name} on SO {sale_order.name} is not configured for automatic PO creation (Dropship/Buy route or no vendor). Skipping PO line.")
+                        _logger.info(f"Product {sl.product_id.name} on SO {sale_order.name} is not configured for automatic PO creation (no 'Buy'/'Dropship' route or no vendor). Skipping PO line.")
 
             created_pos = []
             for vendor, po_lines_data in po_lines_by_vendor.items():
