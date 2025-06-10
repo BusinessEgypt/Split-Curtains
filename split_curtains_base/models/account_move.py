@@ -29,7 +29,6 @@ class AccountMove(models.Model):
             po_lines_by_vendor = defaultdict(list)
             
             # جلب الـ routes الأساسية لـ Buy و Dropship
-            # استخدام ref لضمان الحصول على الـ ID الصحيح بغض النظر عن الترجمة أو تغيير الاسم
             buy_route = self.env.ref('purchase_stock.route_warehouse0_buy', raise_if_not_found=False)
             dropship_route = self.env.ref('stock_dropshipping.route_transit_location_dropship', raise_if_not_found=False)
             
@@ -37,8 +36,14 @@ class AccountMove(models.Model):
                 _logger.warning("Could not find 'Buy' or 'Dropship' routes. PO creation might not work as expected.")
 
             for sl in sale_order.order_line:
+                # التحقق إذا كان المنتج هو دفعة مقدمة (بنفس منطق sale_order_line)
+                is_downpayment_product = sl.product_id and (
+                    'down' in (sl.product_id.name or '').lower() or
+                    'down' in (sl.product_id.default_code or '').lower()
+                )
+
                 # تجاهل سطور الدفعات المقدمة أو المنتجات الخدمية
-                if sl.product_id and sl.product_id.type != 'service' and not sl.product_id.is_downpayment:
+                if sl.product_id and sl.product_id.type != 'service' and not is_downpayment_product:
                     
                     product_has_relevant_route = False
                     
