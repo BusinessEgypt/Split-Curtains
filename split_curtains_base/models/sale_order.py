@@ -21,14 +21,14 @@ class SaleOrder(models.Model):
         store=True,
     )
 
-    # تم إزالة حقل x_accounts_approval
+    # تم إزالة حقل x_accounts_approval السابق
     # x_accounts_approval = fields.Boolean(...)
 
-    # هذا الحقل مهم لتتبع ما إذا تم إنشاء POs بالفعل
+    # حقل جديد لتتبع إذا تم إنشاء أوامر شراء من هذا الطلب بواسطة الفاتورة
     x_po_created_from_invoice = fields.Boolean(
         string='POs Created from Invoice',
         default=False,
-        help="Indicates if purchase orders have been generated for this sale order via invoice payment."
+        help="Indicates if purchase orders have been generated for this sale order via invoice posting."
     )
 
     @api.depends('amount_total', 'invoice_ids.amount_total', 'invoice_ids.state', 'invoice_ids.move_type')
@@ -43,4 +43,3 @@ class SaleOrder(models.Model):
             order.x_remaining = order.amount_total - paid_total
 
     # تم إزالة دالة _prepare_purchase_order_line ودالة action_create_purchase هنا
-    # لأن إنشاء الـ PO سيتم من خلال AccountMove عند الدفع.
