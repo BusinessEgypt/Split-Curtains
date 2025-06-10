@@ -5,7 +5,7 @@
     <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
 
-      <!-- إضافة حقول العربون والمتبقي -->
+      <!-- Paid / Remaining Fields -->
       <xpath expr="//sheet//group" position="inside">
         <group>
           <field name="x_downpayment"/>
@@ -13,9 +13,17 @@
         </group>
       </xpath>
 
-      <!-- تعديل order_line لإخفاء سطور down payment -->
+      <!-- Filter out down payment product lines -->
       <xpath expr="//field[@name='order_line']" position="attributes">
         <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
+      </xpath>
+
+      <!-- Button: Create Manufacturing Order (actually PO) -->
+      <xpath expr="//header" position="inside">
+        <button name="action_create_purchase"
+                type="object"
+                string="Create Manufacturing Order"
+                class="btn-primary"/>
       </xpath>
 
     </field>
