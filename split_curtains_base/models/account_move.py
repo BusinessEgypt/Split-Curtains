@@ -18,6 +18,12 @@ class AccountMove(models.Model):
                 _logger.warning(f"No Sale Order found for invoice {inv.name}. Skipping PO creation.")
                 continue
 
+            # حذف أي PO draft طلع قبل كده مرتبط بنفس SO (نظافة نهائية)
+            linked_purchase_orders = self.env['purchase.order'].search([('origin', '=', sale_order.name), ('state', '=', 'draft')])
+            for po in linked_purchase_orders:
+                po.button_cancel()
+                po.unlink()
+
             if sale_order.x_po_created_from_invoice:
                 _logger.info(f"POs already created for SO {sale_order.name}. Skipping.")
                 continue
@@ -35,16 +41,22 @@ class AccountMove(models.Model):
                         for move in moves:
                             if move.purchase_line_id and move.purchase_line_id.order_id:
                                 po = move.purchase_line_id.order_id
-                                created_purchase_orders |= po
-
-                                # نضمن إن العملة بالجنيه + التاريخ = النهاردة
+                                # فرض القيم يدويًا
                                 po.currency_id = self.env.ref('base.EGP')
                                 po.date_order = fields.Date.context_today(po)
-
-                                _logger.info(f"Triggered PO {po.name} from SO {sale_order.name}")
-
-                            elif move.production_id:
-                                _logger.info(f"MO triggered for {sl.product_id.name} from SO {sale_order.name}")
+                                for line in po.order_line:
+                                    # تحديث الحقول المخصصة من الـ Sale Order Line
+                                    so_line = sale_order.order_line.filtered(lambda l: l.product_id == line.product_id)
+                                    if so_line:
+                                        line.x_width_m = so_line.x_width_m
+                                        line.x_height_m = so_line.x_height_m
+                                        line.x_quantity_units = so_line.x_quantity_units
+                                        line.x_unit_area_m2 = so_line.x_unit_area_m2
+                                        line.x_total_area_m2 = so_line.x_total_area_m2
+                                        line.x_price_per_m2 = so_line.x_price_per_m2
+                                        line.price_unit = so_line.x_price_per_m2 or 0.0
+                                        line.product_qty = so_line.x_total_area_m2 or 1.0
+                                created_purchase_orders |= po
 
                     except Exception as e:
                         _logger.error(f"Error on stock rule for product {sl.product_id.name}: {e}")
