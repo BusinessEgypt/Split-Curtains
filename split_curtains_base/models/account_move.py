@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 import logging
-from collections import defaultdict # هذا لم يعد ضرورياً بالنهج الجديد لكن لا يضر وجوده
 
 _logger = logging.getLogger(__name__)
 
@@ -39,15 +38,14 @@ class AccountMove(models.Model):
                 if sl.product_id and sl.product_id.type != 'service' and not is_downpayment_product:
                     # Odoo 18: دالة _action_launch_stock_rule() هي الطريقة القياسية لتشغيل قواعد المخزون (Routes)
                     # هذا سيقوم بإنشاء أوامر الشراء/التصنيع تلقائياً بناءً على الـ routes المحددة للمنتج (مثل Buy أو Dropship)
-                    # وسيتعامل مع تجميع الـ POs حسب الموردين تلقائياً.
+                    # وسيتعامل مع تجميع الـ POs حسب الموردين، وإحضار سعر الشراء من product.supplierinfo تلقائياً.
                     try:
+                        # يجب أن يكون الـ sale.order.line هو الذي يشغل القاعدة
                         moves = sl._action_launch_stock_rule()
                         for move in moves:
                             if move.purchase_line_id and move.purchase_line_id.order_id:
                                 created_purchase_orders |= move.purchase_line_id.order_id
                                 _logger.info(f"Triggered stock rule for {sl.product_id.name} on SO {sale_order.name}. PO: {move.purchase_line_id.order_id.name}")
-                                # يمكن تأكيد PO هنا، أو تركه للـ workflow الخاص بالـ purchase
-                                # move.purchase_line_id.order_id.button_confirm() # لا تفعل هذا إلا إذا كنت تريد تأكيد فوري!
                             elif move.production_id:
                                 _logger.info(f"Triggered manufacturing order for {sl.product_id.name} on SO {sale_order.name}. MO: {move.production_id.name}")
                             else:
@@ -58,15 +56,14 @@ class AccountMove(models.Model):
                 else:
                     _logger.info(f"Skipping product {sl.product_id.name} (service/downpayment) on SO {sale_order.name} for PO creation.")
 
-            # إذا تم إنشاء أي POs بنجاح، قم بتحديث حقل التتبع في أمر البيع
+            # إذا تم إنشاء أي POs بنجاح، قم بتحديث حقل التتبع في أمر البيع وتأكيدها
             if created_purchase_orders:
                 sale_order.x_po_created_from_invoice = True
                 _logger.info(f"Sale Order {sale_order.name} marked as 'PO created from invoice'. Created POs: {[po.name for po in created_purchase_orders]}")
                 
-                # تأكيد الـ POs التي تم إنشاؤها إذا لم يتم تأكيدها تلقائيا
                 for po in created_purchase_orders:
                     if po.state == 'draft':
-                        po.button_confirm()
+                        po.button_confirm() # تأكيد الـ POs التي تم إنشاؤها إذا كانت في حالة Draft
                         _logger.info(f"Confirmed PO: {po.name}")
                     po.message_post(body=f'🧰 Auto-created PO from Sale Order {sale_order.name} triggered by Invoice {inv.name}.')
             elif sale_order.order_line.filtered(lambda l: l.product_id and l.product_id.type != 'service' and not ('down' in (l.product_id.name or '').lower() or 'down' in (l.product_id.default_code or '').lower())):
