@@ -16,11 +16,11 @@ class PurchaseOrderLine(models.Model):
     x_total_price = fields.Monetary(
         string="Total Purchase Price",
         compute='_compute_x_total_purchase_price', # <--- أصبح حقلًا محسوبًا
-        store=True, # <--- مازال مخزناً
+        store=True, # <--- مازال مخزناً لتخزين القيمة بعد الحساب
         currency_field='currency_id'
     )
 
-    @api.depends('x_total_area_m2', 'price_unit') # <--- يعتمد على سعر الوحدة في الـ PO
+    @api.depends('x_total_area_m2', 'price_unit') # <--- يعتمد الآن على سعر الوحدة في الـ PO
     def _compute_x_total_purchase_price(self):
         for line in self:
             line.x_total_price = line.x_total_area_m2 * line.price_unit
