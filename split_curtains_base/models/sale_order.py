@@ -24,7 +24,6 @@ class SaleOrder(models.Model):
     # تم إزالة حقل x_accounts_approval السابق
     # x_accounts_approval = fields.Boolean(...)
 
-    # حقل جديد لتتبع إذا تم إنشاء أوامر شراء من هذا الطلب بواسطة الفاتورة
     x_po_created_from_invoice = fields.Boolean(
         string='POs Created from Invoice',
         default=False,
@@ -43,3 +42,4 @@ class SaleOrder(models.Model):
             order.x_remaining = order.amount_total - paid_total
 
     # تم إزالة دالة _prepare_purchase_order_line ودالة action_create_purchase هنا
+    # لأن إنشاء الـ PO سيتم من خلال AccountMove
