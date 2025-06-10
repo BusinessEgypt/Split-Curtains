@@ -12,6 +12,11 @@ class PurchaseOrderLine(models.Model):
     x_area_m = fields.Float(string="Total Area (m²)")
     x_price_per_m_2 = fields.Float(string="Price per m²")
     x_total = fields.Monetary(string="Total Price", currency_field='currency_id')
+    x_type = fields.Selection([
+        ('fabric', 'Fabric'),
+        ('mechanism', 'Mechanism'),
+        ('accessory', 'Accessory'),
+    ], string="Type")
 
     currency_id = fields.Many2one('res.currency', string='Currency', related='order_id.currency_id', store=True)
 
