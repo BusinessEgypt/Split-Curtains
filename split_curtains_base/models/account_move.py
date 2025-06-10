@@ -8,32 +8,43 @@ class AccountMove(models.Model):
 
     @api.constrains('payment_state')
     def _check_and_create_purchase_orders(self):
-        for inv in self.filtered(lambda m: m.move_type == 'out_invoice' and m.payment_state == 'paid'):
-            sale_order = inv.invoice_origin and self.env['sale.order'].search([('name', '=', inv.invoice_origin)], limit=1)
-            if not sale_order:
+        for inv in self.filtered(lambda m: m.move_type=='out_invoice' and m.payment_state=='paid'):
+            so = inv.invoice_origin and self.env['sale.order'].search([('name','=',inv.invoice_origin)], limit=1)
+            if not so or so.x_po_created_from_invoice:
                 continue
 
-            # Only generate PO if there are actual order lines (not just Down Payment)
-            if not sale_order.order_line.filtered(lambda l: l.product_id and l.product_id.type == 'product'):
+            lines = so.order_line.filtered(lambda l: l.product_id.type=='product')
+            if not lines:
                 continue
 
-            if sale_order.x_po_created_from_invoice:
-                continue
+            # ننشئ PO جديد
+            partner = lines[0].product_id.seller_ids and lines[0].product_id.seller_ids[0].name.id
+            po_vals = {
+                'origin': so.name,
+                'partner_id': partner or so.partner_id.id,
+                'date_order': fields.Date.context_today(self),
+                'currency_id': self.env.ref('base.EGP').id,
+                'company_id': so.company_id.id,
+            }
+            po = self.env['purchase.order'].create(po_vals)
 
-            created_purchase_orders = self.env['purchase.order']
-            for sl in sale_order.order_line:
-                if sl.product_id and sl.product_id.type == 'product':
-                    moves = sl._action_launch_stock_rule()
-                    for move in moves:
-                        if move.purchase_line_id and move.purchase_line_id.order_id:
-                            po = move.purchase_line_id.order_id
-                            po.currency_id = self.env.ref('base.EGP')
-                            po.date_order = fields.Date.context_today(po)
-                            created_purchase_orders |= po
+            for l in lines:
+                po.write({'order_line': [(0, 0, {
+                    'product_id': l.product_id.id,
+                    'name': l.product_id.display_name,
+                    'product_qty': l.x_total_area_m2 or 1,
+                    'product_uom': l.product_uom.id,
+                    'price_unit': l.x_price_per_m2,
+                    #حقول مخصصة
+                    'x_code': l.x_code.id,
+                    'x_width_m': l.x_width_m,
+                    'x_height_m': l.x_height_m,
+                    'x_quantity_units': l.x_quantity_units,
+                    'x_unit_area_m2': l.x_unit_area_m2,
+                    'x_total_area_m2': l.x_total_area_m2,
+                    'x_price_per_m2': l.x_price_per_m2,
+                })]})
 
-            if created_purchase_orders:
-                sale_order.x_po_created_from_invoice = True
-                for po in created_purchase_orders:
-                    if po.state == 'draft':
-                        po.button_confirm()
-                    po.message_post(body=f'🧰 Auto-created PO from SO {sale_order.name} via Invoice {inv.name}')
+            po.button_confirm()
+            so.x_po_created_from_invoice = True
+            po.message_post(body=f'✔️ PO auto-created after Down Payment {inv.name}')
