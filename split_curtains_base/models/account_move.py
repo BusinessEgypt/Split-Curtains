@@ -1,42 +1,40 @@
-# -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 import logging
+
 _logger = logging.getLogger(__name__)
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    @api.constrains('payment_state')
-    def _check_and_create_po_manual(self):
+    def action_post(self):
+        res = super(AccountMove, self).action_post()
         for inv in self.filtered(lambda m: m.move_type == 'out_invoice' and m.payment_state == 'paid'):
-            so = inv.invoice_origin and self.env['sale.order'].search([('name', '=', inv.invoice_origin)], limit=1)
-            if not so or so.x_po_created_from_invoice:
-                continue
+            self._create_po_after_payment(inv)
+        return res
 
-            # إنشاء PO مباشرة (Manual Creation)
-            po = self.env['purchase.order'].create({
-                'origin': so.name,
-                'partner_id': so.partner_id.id,
-                'currency_id': self.env.ref('base.EGP').id,
-                'date_order': fields.Date.context_today(self),
-                'company_id': so.company_id.id,
-                'order_line': [(0, 0, {
-                    'product_id': line.product_id.id,
-                    'name': line.product_id.display_name,
-                    'product_qty': line.x_total_area_m2 or 1,
-                    'product_uom': line.product_uom.id,
-                    'price_unit': line.x_price_per_m2 or line.product_id.standard_price,
-                    'x_code': line.x_code.id,
-                    'x_width_m': line.x_width_m,
-                    'x_height_m': line.x_height_m,
-                    'x_quantity_units': line.x_quantity_units,
-                    'x_unit_area_m2': line.x_unit_area_m2,
-                    'x_total_area_m2': line.x_total_area_m2,
-                    'x_price_per_m2': line.x_price_per_m2,
-                }) for line in so.order_line.filtered(lambda l: l.product_id.type == 'product')]
-            })
+    def _create_po_after_payment(self, invoice):
+        sale_order = invoice.invoice_origin and self.env['sale.order'].search([('name', '=', invoice.invoice_origin)], limit=1)
+        if not sale_order or sale_order.x_po_created_from_invoice:
+            return
 
-            po.button_confirm()
-            so.x_po_created_from_invoice = True
-            _logger.info(f'PO {po.name} created manually after invoice {inv.name} payment')
-            po.message_post(body=f'✅ PO auto-created from SO {so.name} after invoice {inv.name} payment')
+        lines = sale_order.order_line.filtered(lambda l: l.product_id.type == 'product')
+        if not lines:
+            return
+
+        created_purchase_orders = self.env['purchase.order']
+        for line in lines:
+            try:
+                moves = line._action_launch_stock_rule()
+                for move in moves:
+                    if move.purchase_line_id and move.purchase_line_id.order_id:
+                        po = move.purchase_line_id.order_id
+                        created_purchase_orders |= po
+            except Exception as e:
+                _logger.error(f"Error creating PO for product {line.product_id.name}: {e}")
+
+        if created_purchase_orders:
+            sale_order.x_po_created_from_invoice = True
+            for po in created_purchase_orders:
+                if po.state == 'draft':
+                    po.button_confirm()
+                po.message_post(body=f'🧰 Auto-created PO from SO {sale_order.name} via Invoice {invoice.name}')
