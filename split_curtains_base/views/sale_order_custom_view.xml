@@ -1,36 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <record id="view_order_form_split_cur_custom" model="ir.ui.view">
     <field name="name">sale.order.form.split.cur.custom</field>
     <field name="model">sale.order</field>
     <field name="inherit_id" ref="sale.view_order_form"/>
     <field name="arch" type="xml">
-
-      <!-- Paid / Remaining Fields -->
+      <!-- إضافة حقول العربون والمتبقي في Header -->
       <xpath expr="//sheet//group" position="inside">
         <group>
           <field name="x_downpayment"/>
           <field name="x_remaining"/>
         </group>
       </xpath>
-
-      <!-- Filter out down payment product lines -->
-      <xpath expr="//field[@name='order_line']" position="attributes">
-        <attribute name="domain">[('product_id.name', '!=', 'Down Payment')]</attribute>
-      </xpath>
-
-      <!-- زر إنشاء أمر التصنيع وزر فتحهم بدون شروط attrs -->
-      <xpath expr="//header" position="inside">
-        <button name="action_create_purchase"
-                type="object"
-                string="Create Manufacturing Order"
-                class="btn-primary"/>
-                
-        <button name="action_view_purchase_orders"
-                type="object"
-                string="Manufacturing Orders"
-                class="btn-secondary"/>
-      </xpath>
-
     </field>
   </record>
 </odoo>
