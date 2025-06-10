@@ -7,10 +7,11 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    def action_post(self):
-        res = super().action_post()
-        for inv in self.filtered(lambda m: m.move_type == 'out_invoice' and m.state == 'posted'):
-            _logger.info(f"Processing invoice: {inv.name} (ID: {inv.id})")
+    # سنقوم بتشغيل منطق إنشاء الـ PO عند تغيير payment_state إلى 'paid'
+    @api.constrains('payment_state') # أو @api.depends إذا كنا نستخدم حقل محسوب
+    def _check_and_create_purchase_orders(self):
+        for inv in self.filtered(lambda m: m.move_type == 'out_invoice' and m.payment_state == 'paid'):
+            _logger.info(f"Processing invoice for PO creation (payment_state is paid): {inv.name} (ID: {inv.id})")
             
             # البحث عن أمر البيع المرتبط بهذه الفاتورة
             sale_order = inv.invoice_origin and self.env['sale.order'].search([('name', '=', inv.invoice_origin)], limit=1)
@@ -20,15 +21,13 @@ class AccountMove(models.Model):
                 continue
 
             # التحقق إذا تم إنشاء أوامر الشراء لهذا الـ SO بالفعل
-            # هذا يمنع تكرار إنشاء POs عند ترحيل فواتير متعددة لنفس أمر البيع
             if sale_order.x_po_created_from_invoice:
                 _logger.info(f"Purchase Orders already created for Sale Order {sale_order.name}. Skipping further PO creation for invoice {inv.name}.")
                 continue
 
-            # ابدأ في تشغيل قواعد (routes) أمر البيع
             created_purchase_orders = self.env['purchase.order']
             for sl in sale_order.order_line:
-                # التحقق إذا كان المنتج هو دفعة مقدمة (بنفس منطق sale_order_line)
+                # التحقق إذا كان المنتج هو دفعة مقدمة
                 is_downpayment_product = sl.product_id and (
                     'down' in (sl.product_id.name or '').lower() or
                     'down' in (sl.product_id.default_code or '').lower()
@@ -36,11 +35,8 @@ class AccountMove(models.Model):
 
                 # تجاهل سطور الدفعات المقدمة أو المنتجات الخدمية
                 if sl.product_id and sl.product_id.type != 'service' and not is_downpayment_product:
-                    # Odoo 18: دالة _action_launch_stock_rule() هي الطريقة القياسية لتشغيل قواعد المخزون (Routes)
-                    # هذا سيقوم بإنشاء أوامر الشراء/التصنيع تلقائياً بناءً على الـ routes المحددة للمنتج (مثل Buy أو Dropship)
-                    # وسيتعامل مع تجميع الـ POs حسب الموردين، وإحضار سعر الشراء من product.supplierinfo تلقائياً.
                     try:
-                        # يجب أن يكون الـ sale.order.line هو الذي يشغل القاعدة
+                        # تشغيل قواعد المخزون (Routes)
                         moves = sl._action_launch_stock_rule()
                         for move in moves:
                             if move.purchase_line_id and move.purchase_line_id.order_id:
@@ -69,4 +65,6 @@ class AccountMove(models.Model):
             elif sale_order.order_line.filtered(lambda l: l.product_id and l.product_id.type != 'service' and not ('down' in (l.product_id.name or '').lower() or 'down' in (l.product_id.default_code or '').lower())):
                 _logger.warning(f"No purchase orders were created for Sale Order {sale_order.name} despite having non-service/non-downpayment lines. Check product routes and vendor configurations.")
 
-        return res
+        # دالة action_post الأصلية يجب أن يتم استدعاؤها
+        # قم بإرجاع النتيجة الأصلية لـ action_post
+        return super().action_post()
