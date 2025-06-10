@@ -20,20 +20,16 @@ class PurchaseOrderLine(models.Model):
         currency_field='currency_id'
     )
 
-    @api.depends('x_total_area_m2', 'price_unit', 'product_qty') 
+    @api.depends('x_total_area_m2', 'price_unit', 'product_qty', 'x_price_per_m2') 
     def _compute_x_total_purchase_price(self):
         for line in self:
-            # هنا يجب أن تقرر كيف تحسب إجمالي سعر الشراء
-            # إذا كنت تريد أن يكون سعر الشراء هو x_price_per_m2 * x_total_area_m2
-            # فيجب أن تتأكد أن `price_unit` للـ PO يتم ضبطه بناءً على `x_price_per_m2`
-            # أو تقوم بالحساب مباشرة هنا:
+            # استخدم x_price_per_m2 و x_total_area_m2 للحساب إذا كانت موجودة
             if line.x_total_area_m2 and line.x_price_per_m2:
                 line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
             else:
-                # هذا هو الافتراضي إذا لم يكن لديك بيانات المساحة
+                # إذا لم تكن موجودة، استخدم الحساب القياسي
                 line.x_total_price = line.product_qty * line.price_unit
 
-    # تجاوز الدالة القياسية لنقل الحقول المخصصة من sale.order.line
     @api.model
     def _prepare_purchase_order_line_from_sale_line(self, sale_line, product_id, product_qty, product_uom, company_id, supplier):
         """
@@ -51,5 +47,9 @@ class PurchaseOrderLine(models.Model):
             'x_unit_area_m2': sale_line.x_unit_area_m2,
             'x_total_area_m2': sale_line.x_total_area_m2,
             'x_price_per_m2': sale_line.x_price_per_m2,
+            # تأكد من أن سعر الوحدة في الـ PO يعكس سعر المتر المربع إذا كان هو الأساس
+            # Odoo عادةً ما يستخدم price_unit بناءً على سجل المورد، ولكن يمكننا تعيين قيمة مبدئية هنا.
+            # إذا كان سعر الشراء هو نفسه سعر البيع في السطور المخصصة، فيمكن تعيينه:
+            'price_unit': sale_line.x_price_per_m2, # هذا قد يكون غير دقيق تماما إذا كان سعر الشراء مختلف
         })
         return values

@@ -30,18 +30,20 @@ class SaleOrderLine(models.Model):
     @api.depends('x_width_m', 'x_height_m')
     def _compute_unit_area(self):
         for line in self:
-            area = (line.x_width_m or 0) * (line.x_height_m or 0)
-            line.x_unit_area_m2 = max(area, 2)
+            line.x_unit_area_m2 = line.x_width_m * line.x_height_m
 
     @api.depends('x_unit_area_m2', 'x_quantity_units')
     def _compute_total_area(self):
         for line in self:
-            line.x_total_area_m2 = line.x_unit_area_m2 * (line.x_quantity_units or 0)
+            line.x_total_area_m2 = line.x_unit_area_m2 * line.x_quantity_units
 
     @api.depends('x_code')
     def _compute_price_per_m2(self):
         for line in self:
-            line.x_price_per_m2 = line.x_code.list_price or 0
+            if line.x_code:
+                line.x_price_per_m2 = line.x_code.list_price / (line.x_unit_area_m2 if line.x_unit_area_m2 else 1)
+            else:
+                line.x_price_per_m2 = 0.0
 
     @api.depends('x_total_area_m2', 'x_price_per_m2', 'product_id', 'price_unit', 'product_uom_qty', 'price_subtotal')
     def _compute_total_price(self):
@@ -50,7 +52,6 @@ class SaleOrderLine(models.Model):
                 'down' in (line.product_id.name or '').lower()
                 or 'down' in (line.product_id.default_code or '').lower()
             ):
-                # يظهر بالسالب لأي منتج اسمه أو كوده فيه down
                 line.x_total_price = -abs(line.price_subtotal or 0)
             else:
                 line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
@@ -58,19 +59,20 @@ class SaleOrderLine(models.Model):
     @api.onchange('x_width_m', 'x_height_m', 'x_quantity_units', 'x_code', 'product_id')
     def _onchange_manual_fields(self):
         for line in self:
-            # لو المنتج Down Payment أو فيه كلمة down
             if line.product_id and (
                 'down' in (line.product_id.name or '').lower()
                 or 'down' in (line.product_id.default_code or '').lower()
             ):
                 line.x_code = line.product_id
-                # سابه زي ما هو، مش هيغير الأسعار ولا الكميات هنا
                 return
             else:
-                area = max((line.x_width_m or 0) * (line.x_height_m or 0), 2)
-                total_area = area * (line.x_quantity_units or 0)
-                price_per_m2 = line.x_code.list_price or 0
+                area = max((line.x_width_m or 0.0) * (line.x_height_m or 0.0), 0.0)
+                line.x_unit_area_m2 = area
+                line.x_total_area_m2 = area * (line.x_quantity_units or 0)
 
-                line.product_id = line.x_code.id
-                line.price_unit = price_per_m2
-                line.product_uom_qty = total_area
+                if line.x_price_per_m2 and line.x_unit_area_m2:
+                    line.price_unit = line.x_price_per_m2 * line.x_unit_area_m2
+                elif line.product_id:
+                    line.price_unit = line.product_id.list_price
+                else:
+                    line.price_unit = 0.0
