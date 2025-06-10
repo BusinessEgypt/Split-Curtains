@@ -10,7 +10,7 @@
     'category': 'Sales',
     'author': 'Split Curtains',
     'website': 'https://www.splitcurtains.com/',
-    'depends': ['sale', 'purchase', 'stock_dropshipping', 'purchase_stock'], # هذا هو التعديل الأساسي
+    'depends': ['sale', 'purchase', 'stock_dropshipping', 'purchase_stock'], # التأكد من هذه الـ depends
     'data': [
         'views/sale_order_line_form_view.xml',
         'views/sale_order_custom_view.xml',

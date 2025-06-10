@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    # سنقوم بتشغيل منطق إنشاء الـ PO عند تغيير payment_state إلى 'paid'
+    # هذه الدالة ستُشغل عند كل تغيير لحالة الدفع، خاصة عندما تصبح 'paid'
     @api.constrains('payment_state')
     def _check_and_create_purchase_orders(self):
         for inv in self.filtered(lambda m: m.move_type == 'out_invoice' and m.payment_state == 'paid'):
@@ -19,13 +19,14 @@ class AccountMove(models.Model):
                 _logger.warning(f"No Sale Order found for invoice {inv.name}. Skipping PO creation.")
                 continue
 
-            # التأكد من عدم إنشاء POs لهذا الـ SO سابقًا
+            # التحقق من أننا لم نقم بإنشاء POs لهذا الـ SO سابقًا لتجنب التكرار
             if sale_order.x_po_created_from_invoice:
                 _logger.info(f"Purchase Orders already created for Sale Order {sale_order.name}. Skipping further PO creation for invoice {inv.name}.")
                 continue
 
             created_purchase_orders = self.env['purchase.order']
             for sl in sale_order.order_line:
+                # تجاهل منتجات الدفعة المقدمة والخدمات
                 is_downpayment_product = sl.product_id and (
                     'down' in (sl.product_id.name or '').lower() or
                     'down' in (sl.product_id.default_code or '').lower()
@@ -33,8 +34,7 @@ class AccountMove(models.Model):
 
                 if sl.product_id and sl.product_id.type != 'service' and not is_downpayment_product:
                     try:
-                        # هذه الدالة (الموجودة في sale_stock/models/sale_order.py)
-                        # ستقوم بإنشاء Supply Methods (مثل POs أو MOs)
+                        # استدعاء _action_launch_stock_rule لإنشاء PO أو MO بناءً على Routes
                         moves = sl._action_launch_stock_rule()
                         for move in moves:
                             if move.purchase_line_id and move.purchase_line_id.order_id:
@@ -50,14 +50,14 @@ class AccountMove(models.Model):
                 else:
                     _logger.info(f"Skipping product {sl.product_id.name} (service/downpayment) on SO {sale_order.name} for PO creation.")
 
-            # إذا تم إنشاء أي POs بنجاح، قم بتحديث حقل التتبع في أمر البيع وتأكيدها
+            # إذا تم إنشاء أي أوامر شراء، قم بتحديث حقل التتبع وتأكيدها
             if created_purchase_orders:
                 sale_order.x_po_created_from_invoice = True
                 _logger.info(f"Sale Order {sale_order.name} marked as 'PO created from invoice'. Created POs: {[po.name for po in created_purchase_orders]}")
                 
                 for po in created_purchase_orders:
                     if po.state == 'draft':
-                        po.button_confirm() # تأكيد الـ POs التي تم إنشاؤها إذا كانت في حالة Draft
+                        po.button_confirm() # تأكيد الـ POs إذا كانت في حالة Draft
                         _logger.info(f"Confirmed PO: {po.name}")
                     po.message_post(body=f'🧰 Auto-created PO from Sale Order {sale_order.name} triggered by Invoice {inv.name}.')
             elif sale_order.order_line.filtered(lambda l: l.product_id and l.product_id.type != 'service' and not ('down' in (l.product_id.name or '').lower() or 'down' in (l.product_id.default_code or '').lower())):

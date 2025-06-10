@@ -40,8 +40,6 @@ class SaleOrderLine(models.Model):
     @api.depends('x_code')
     def _compute_price_per_m2(self):
         for line in self:
-            # هنا يجب أن يتم جلب السعر من المنتج (أو قائمة أسعار خاصة بالستائر)
-            # مثال بسيط: جلب سعر البيع الافتراضي للمنتج
             if line.x_code:
                 line.x_price_per_m2 = line.x_code.list_price / (line.x_unit_area_m2 if line.x_unit_area_m2 else 1)
             else:
@@ -54,7 +52,6 @@ class SaleOrderLine(models.Model):
                 'down' in (line.product_id.name or '').lower()
                 or 'down' in (line.product_id.default_code or '').lower()
             ):
-                # يظهر بالسالب لأي منتج اسمه أو كوده فيه down
                 line.x_total_price = -abs(line.price_subtotal or 0)
             else:
                 line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
@@ -73,7 +70,6 @@ class SaleOrderLine(models.Model):
                 line.x_unit_area_m2 = area
                 line.x_total_area_m2 = area * (line.x_quantity_units or 0)
 
-                # يجب أن يتأثر سعر الوحدة هنا بسعر المتر المربع
                 if line.x_price_per_m2 and line.x_unit_area_m2:
                     line.price_unit = line.x_price_per_m2 * line.x_unit_area_m2
                 elif line.product_id:

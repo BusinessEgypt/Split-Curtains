@@ -23,13 +23,17 @@ class PurchaseOrderLine(models.Model):
     @api.depends('x_total_area_m2', 'price_unit', 'product_qty') 
     def _compute_x_total_purchase_price(self):
         for line in self:
+            # هنا يجب أن تقرر كيف تحسب إجمالي سعر الشراء
+            # إذا كنت تريد أن يكون سعر الشراء هو x_price_per_m2 * x_total_area_m2
+            # فيجب أن تتأكد أن `price_unit` للـ PO يتم ضبطه بناءً على `x_price_per_m2`
+            # أو تقوم بالحساب مباشرة هنا:
             if line.x_total_area_m2 and line.x_price_per_m2:
-                # إذا كانت الأسعار تعتمد على المتر المربع في الشراء
                 line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
             else:
-                # هذا هو الافتراضي إذا لم يكن لديك بيانات المساحة أو السعر بالمتر المربع
+                # هذا هو الافتراضي إذا لم يكن لديك بيانات المساحة
                 line.x_total_price = line.product_qty * line.price_unit
 
+    # تجاوز الدالة القياسية لنقل الحقول المخصصة من sale.order.line
     @api.model
     def _prepare_purchase_order_line_from_sale_line(self, sale_line, product_id, product_qty, product_uom, company_id, supplier):
         """
