@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 import logging
-from collections import defaultdict
+from collections import defaultdict # هذا لم يعد ضرورياً بالنهج الجديد لكن لا يضر وجوده
 
 _logger = logging.getLogger(__name__)
 
@@ -21,20 +21,13 @@ class AccountMove(models.Model):
                 continue
 
             # التحقق إذا تم إنشاء أوامر الشراء لهذا الـ SO بالفعل
+            # هذا يمنع تكرار إنشاء POs عند ترحيل فواتير متعددة لنفس أمر البيع
             if sale_order.x_po_created_from_invoice:
                 _logger.info(f"Purchase Orders already created for Sale Order {sale_order.name}. Skipping further PO creation for invoice {inv.name}.")
                 continue
 
-            # تجميع سطور أمر الشراء حسب المورد
-            po_lines_by_vendor = defaultdict(list)
-            
-            # جلب الـ routes الأساسية لـ Buy و Dropship
-            buy_route = self.env.ref('purchase_stock.route_warehouse0_buy', raise_if_not_found=False)
-            dropship_route = self.env.ref('stock_dropshipping.route_transit_location_dropship', raise_if_not_found=False)
-            
-            if not (buy_route and dropship_route):
-                _logger.warning("Could not find 'Buy' or 'Dropship' routes. PO creation might not work as expected.")
-
+            # ابدأ في تشغيل قواعد (routes) أمر البيع
+            created_purchase_orders = self.env['purchase.order']
             for sl in sale_order.order_line:
                 # التحقق إذا كان المنتج هو دفعة مقدمة (بنفس منطق sale_order_line)
                 is_downpayment_product = sl.product_id and (
@@ -44,65 +37,39 @@ class AccountMove(models.Model):
 
                 # تجاهل سطور الدفعات المقدمة أو المنتجات الخدمية
                 if sl.product_id and sl.product_id.type != 'service' and not is_downpayment_product:
-                    
-                    product_has_relevant_route = False
-                    
-                    # 1. التحقق من الـ route المباشر على سطر أمر البيع إذا كان موجودًا
-                    if sl.route_id and (sl.route_id == buy_route or sl.route_id == dropship_route):
-                        product_has_relevant_route = True
-                    # 2. إذا لم يكن هناك route مباشر، تحقق من الـ routes على المنتج أو فئته
-                    elif sl.product_id:
-                        product_routes = sl.product_id.route_ids | sl.product_id.categ_id.route_ids
-                        if (buy_route and buy_route in product_routes) or \
-                           (dropship_route and dropship_route in product_routes):
-                            product_has_relevant_route = True
-                            
-                    if product_has_relevant_route and sl.product_id.seller_ids:
-                        # الحصول على المورد الافتراضي للمنتج أو أول مورد
-                        vendor = sl.product_id.seller_ids[0].partner_id
-                        if vendor:
-                            po_lines_by_vendor[vendor].append({
-                                'product_id': sl.product_id.id,
-                                'name': sl.name,
-                                'product_qty': sl.product_uom_qty,
-                                'product_uom': sl.product_uom.id,
-                                'price_unit': sl.product_id.standard_price, # سعر الشراء الافتراضي للمنتج
-                                'date_planned': fields.Date.today(),
-                                # نقل الحقول المخصصة لـ PO Line
-                                'x_code': sl.x_code.id,
-                                'x_type': sl.x_type,
-                                'x_width_m': sl.x_width_m,
-                                'x_height_m': sl.x_height_m,
-                                'x_quantity_units': sl.x_quantity_units,
-                                'x_unit_area_m2': sl.x_unit_area_m2,
-                                'x_total_area_m2': sl.x_total_area_m2,
-                                'x_price_per_m2': sl.x_price_per_m2,
-                            })
-                        else:
-                            _logger.warning(f"Product {sl.product_id.name} on SO {sale_order.name} has no vendor configured. Skipping PO line.")
-                    else:
-                        _logger.info(f"Product {sl.product_id.name} on SO {sale_order.name} is not configured for automatic PO creation (no 'Buy'/'Dropship' route or no vendor). Skipping PO line.")
-
-            created_pos = []
-            for vendor, po_lines_data in po_lines_by_vendor.items():
-                if po_lines_data:
-                    _logger.info(f"Attempting to create PO for vendor {vendor.name} from Sale Order {sale_order.name}.")
+                    # Odoo 18: دالة _action_launch_stock_rule() هي الطريقة القياسية لتشغيل قواعد المخزون (Routes)
+                    # هذا سيقوم بإنشاء أوامر الشراء/التصنيع تلقائياً بناءً على الـ routes المحددة للمنتج (مثل Buy أو Dropship)
+                    # وسيتعامل مع تجميع الـ POs حسب الموردين تلقائياً.
                     try:
-                        po = self.env['purchase.order'].create({
-                            'partner_id': vendor.id,
-                            'origin': inv.invoice_origin or inv.name,
-                            'order_line': [(0, 0, line_data) for line_data in po_lines_data],
-                        })
-                        po.button_confirm() # تأكيد أمر الشراء تلقائيا
-                        _logger.info(f"Successfully created and confirmed Purchase Order {po.name} for vendor {vendor.name} from Sale Order {sale_order.name}.")
-                        po.message_post(body=f'🧰 Auto-created PO (as Manufacturing Order) from Sale Order {sale_order.name} triggered by Invoice {inv.name}.')
-                        created_pos.append(po)
+                        moves = sl._action_launch_stock_rule()
+                        for move in moves:
+                            if move.purchase_line_id and move.purchase_line_id.order_id:
+                                created_purchase_orders |= move.purchase_line_id.order_id
+                                _logger.info(f"Triggered stock rule for {sl.product_id.name} on SO {sale_order.name}. PO: {move.purchase_line_id.order_id.name}")
+                                # يمكن تأكيد PO هنا، أو تركه للـ workflow الخاص بالـ purchase
+                                # move.purchase_line_id.order_id.button_confirm() # لا تفعل هذا إلا إذا كنت تريد تأكيد فوري!
+                            elif move.production_id:
+                                _logger.info(f"Triggered manufacturing order for {sl.product_id.name} on SO {sale_order.name}. MO: {move.production_id.name}")
+                            else:
+                                _logger.info(f"Stock rule for {sl.product_id.name} on SO {sale_order.name} resulted in moves but no PO/MO. Move: {move.name}")
+
                     except Exception as e:
-                        _logger.error(f"Error creating PO for vendor {vendor.name} from Sale Order {sale_order.name}: {e}")
+                        _logger.error(f"Error launching stock rule for product {sl.product_id.name} on SO {sale_order.name}: {e}")
+                else:
+                    _logger.info(f"Skipping product {sl.product_id.name} (service/downpayment) on SO {sale_order.name} for PO creation.")
 
             # إذا تم إنشاء أي POs بنجاح، قم بتحديث حقل التتبع في أمر البيع
-            if created_pos:
+            if created_purchase_orders:
                 sale_order.x_po_created_from_invoice = True
-                _logger.info(f"Sale Order {sale_order.name} marked as 'PO created from invoice'.")
+                _logger.info(f"Sale Order {sale_order.name} marked as 'PO created from invoice'. Created POs: {[po.name for po in created_purchase_orders]}")
+                
+                # تأكيد الـ POs التي تم إنشاؤها إذا لم يتم تأكيدها تلقائيا
+                for po in created_purchase_orders:
+                    if po.state == 'draft':
+                        po.button_confirm()
+                        _logger.info(f"Confirmed PO: {po.name}")
+                    po.message_post(body=f'🧰 Auto-created PO from Sale Order {sale_order.name} triggered by Invoice {inv.name}.')
+            elif sale_order.order_line.filtered(lambda l: l.product_id and l.product_id.type != 'service' and not ('down' in (l.product_id.name or '').lower() or 'down' in (l.product_id.default_code or '').lower())):
+                _logger.warning(f"No purchase orders were created for Sale Order {sale_order.name} despite having non-service/non-downpayment lines. Check product routes and vendor configurations.")
 
         return res
