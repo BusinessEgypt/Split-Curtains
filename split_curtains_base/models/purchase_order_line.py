@@ -35,4 +35,3 @@ class PurchaseOrderLine(models.Model):
     def _compute_total_price(self):
         for line in self:
             line.x_total = (line.x_area_m or 0) * (line.x_price_per_m_2 or 0)
-
