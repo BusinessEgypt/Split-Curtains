@@ -10,8 +10,8 @@
     'category': 'Sales',
     'author': 'Split Curtains',
     'website': 'https://www.splitcurtains.com/',
-    'depends': ['sale'],
-        'data': [
+    'depends': ['sale', 'purchase'], # تم إضافة 'purchase' هنا
+    'data': [
         'views/sale_order_line_form_view.xml',
         'views/sale_order_custom_view.xml',
     ],
