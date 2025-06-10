@@ -21,11 +21,8 @@ class SaleOrder(models.Model):
         store=True,
     )
 
-    # تم إزالة حقل x_accounts_approval
-    # x_accounts_approval = fields.Boolean(
-    #     string='Accounts Approval',
-    #     default=False,
-    # )
+    # تم إزالة حقل x_accounts_approval السابق
+    # x_accounts_approval = fields.Boolean(...)
 
     # حقل جديد لتتبع إذا تم إنشاء أوامر شراء من هذا الطلب بواسطة الفاتورة
     x_po_created_from_invoice = fields.Boolean(
@@ -45,4 +42,4 @@ class SaleOrder(models.Model):
             order.x_downpayment = paid_total
             order.x_remaining = order.amount_total - paid_total
 
-    # تم إزالة دالة _prepare_purchase_order_line ودالة action_create_purchase
+    # تم إزالة دالة _prepare_purchase_order_line ودالة action_create_purchase هنا

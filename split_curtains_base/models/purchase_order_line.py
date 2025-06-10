@@ -11,7 +11,7 @@ class PurchaseOrderLine(models.Model):
     x_quantity_units = fields.Integer(string="Quantity (Units)")
     x_unit_area_m2 = fields.Float(string="Unit Area (m²)")
     x_total_area_m2 = fields.Float(string="Total Area (m²)")
-    x_price_per_m2 = fields.Float(string="Price per m²") # هذا الحقل ما زال يتم نقله من الـ SO، يمكنك استخدامه أو تركه يعتمد على price_unit
+    x_price_per_m2 = fields.Float(string="Price per m²") 
 
     x_total_price = fields.Monetary(
         string="Total Purchase Price",
@@ -20,18 +20,18 @@ class PurchaseOrderLine(models.Model):
         currency_field='currency_id'
     )
 
-    @api.depends('x_total_area_m2', 'price_unit', 'product_qty') # يعتمد الآن على سعر الوحدة وكمية الـ PO
+    @api.depends('x_total_area_m2', 'price_unit', 'product_qty') 
     def _compute_x_total_purchase_price(self):
         for line in self:
-            # استخدام x_total_area_m2 إذا كانت الـ PO مرتبطة بـ Area، وإلا استخدام product_qty * price_unit
-            if line.x_total_area_m2 > 0 and line.x_price_per_m2 > 0:
-                line.x_total_price = line.x_total_area_m2 * line.price_unit # أو line.x_price_per_m2 إذا كان هذا هو سعر الشراء per m2
+            # هنا يجب أن تقرر كيف تحسب إجمالي سعر الشراء
+            # إذا كنت تريد أن يكون سعر الشراء هو x_price_per_m2 * x_total_area_m2
+            # فيجب أن تتأكد أن `price_unit` للـ PO يتم ضبطه بناءً على `x_price_per_m2`
+            # أو تقوم بالحساب مباشرة هنا:
+            if line.x_total_area_m2 and line.x_price_per_m2:
+                line.x_total_price = line.x_total_area_m2 * line.x_price_per_m2
             else:
+                # هذا هو الافتراضي إذا لم يكن لديك بيانات المساحة
                 line.x_total_price = line.product_qty * line.price_unit
-            # ملاحظة: تم تعديل هذا السطر ليستخدم price_unit من الـ PO وليس x_price_per_m2 من الـ SO مباشرةً
-            # إذا كنت تريد أن يكون سعر الشراء هو x_price_per_m2 مضروباً في x_total_area_m2، يجب ضبط price_unit في الـ PO بناءً عليه.
-            # حالياً، price_unit سيأتي من Product Supplierinfo.
-            # لذا، إذا كان x_total_area_m2 هو الكمية الأساسية للشراء، فكر في ضبط product_qty = x_total_area_m2.
 
     # تجاوز الدالة القياسية لنقل الحقول المخصصة من sale.order.line
     @api.model
@@ -51,6 +51,5 @@ class PurchaseOrderLine(models.Model):
             'x_unit_area_m2': sale_line.x_unit_area_m2,
             'x_total_area_m2': sale_line.x_total_area_m2,
             'x_price_per_m2': sale_line.x_price_per_m2,
-            # 'x_total_price' سيتم حسابه تلقائياً
         })
         return values
